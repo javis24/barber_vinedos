@@ -1,8 +1,10 @@
-POST http://localhost:3000/api/appointments
+POST http://localhost:3000/api/users
 Content-Type: application/json
 
 {
   "name": "Juan Pérez",
-  "phone": "5551234567",
-  "datetime": "2024-11-14T11:00:00"
+  "email": "juan@example.com",
+  "password": "password123",
+  "role": "admin"
 }
+

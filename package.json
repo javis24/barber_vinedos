@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "autoprefixer": "^10.4.20",
+    "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",
     "luxon": "^3.5.0",
     "mysql2": "^3.11.4",
