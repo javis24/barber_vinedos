@@ -1,11 +1,12 @@
-// pages/agenda.js
 import React from 'react';
-import StyledDateTimePicker from '../components/StyledDateTimePicker';
+import DateTimePicker from '../components/DateTimePicker';
+
 
 const Agenda = () => {
   return (
     <div>
-      <StyledDateTimePicker />
+
+      <DateTimePicker />
     </div>
   );
 };
