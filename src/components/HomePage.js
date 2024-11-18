@@ -5,9 +5,11 @@ import { useRouter } from 'next/router';
 const HomePage = () => {
   const router = useRouter();
 
-  const navigateToDateTimePicker = () => {
-    router.push('/agenda');
-  };
+ // components/HomePage.js
+const navigateToDateTimePicker = () => {
+  router.push('/agenda');
+};
+
 
   return (
     <div
