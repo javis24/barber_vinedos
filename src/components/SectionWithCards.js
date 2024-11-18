@@ -1,5 +1,7 @@
 // components/SectionWithCards.js
 import React from "react";
+import '../styles/globals.css';
+
 
 const SectionWithCards = () => {
   return (
