@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const sequelize = require('../config/database'); 
 
 const Client = sequelize.define('Client', {
   id: {
@@ -10,21 +10,14 @@ const Client = sequelize.define('Client', {
   name: {
     type: DataTypes.STRING,
     allowNull: false,
-    validate: {
-      notEmpty: true,
-    },
   },
   phone: {
     type: DataTypes.STRING,
     allowNull: false,
-    validate: {
-      notEmpty: true,
-      isNumeric: true,
-    },
+    unique: true,
   },
 }, {
-  timestamps: true, // Añade createdAt y updatedAt automáticamente
-  tableName: 'clients', // Nombre de la tabla en la base de datos
+  timestamps: true, // Habilita las columnas createdAt y updatedAt automáticamente
 });
 
 module.exports = Client;

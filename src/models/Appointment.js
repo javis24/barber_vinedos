@@ -1,8 +1,9 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Client = require('./Client');
+const Client = require('./Client'); 
 
 const Appointment = sequelize.define('Appointment', {
+ 
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -11,22 +12,25 @@ const Appointment = sequelize.define('Appointment', {
   datetime: {
     type: DataTypes.DATE,
     allowNull: false,
-    validate: {
-      notEmpty: true,
-    },
   },
   status: {
-    type: DataTypes.ENUM('scheduled', 'cancelled', 'completed'),
-    allowNull: false,
-    defaultValue: 'scheduled', // Estado inicial
+    type: DataTypes.ENUM('scheduled', 'canceled', 'completed'),
+    defaultValue: 'scheduled',
+  },
+  clientId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: Client,
+      key: 'id',
+    },
+    onDelete: 'CASCADE',
   },
 }, {
-  timestamps: true, // Añade createdAt y updatedAt automáticamente
-  tableName: 'appointments', // Nombre de la tabla en la base de datos
+  timestamps: true,
 });
 
-// Relación: un cliente puede tener muchas citas
-Client.hasMany(Appointment, { foreignKey: 'clientId', onDelete: 'CASCADE' });
-Appointment.belongsTo(Client, { foreignKey: 'clientId', onDelete: 'CASCADE' });
+// Relación entre modelos
+Client.hasMany(Appointment, { foreignKey: 'clientId' });
+Appointment.belongsTo(Client, { foreignKey: 'clientId' });
 
 module.exports = Appointment;

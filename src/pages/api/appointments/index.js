@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import Client from '../../../models/Client';
 import Appointment from '../../../models/Appointment';
 import { Op } from 'sequelize';
@@ -7,13 +8,16 @@ export default async function handler(req, res) {
     const { name, phone, datetime } = req.body;
 
     try {
-      // Validar que el horario sea válido
-      const appointmentDate = new Date(datetime);
-      const dayOfWeek = appointmentDate.getDay();
-      const hour = appointmentDate.getHours();
-      const minutes = appointmentDate.getMinutes();
+      // Interpreta la fecha enviada directamente como local
+      const appointmentDate = DateTime.fromISO(datetime, { zone: 'America/Mexico_City' });
+      const dayOfWeek = appointmentDate.weekday; // 1 = Lunes, ..., 7 = Domingo
+      const hour = appointmentDate.hour;
+      const minutes = appointmentDate.minute;
 
-      // Horarios permitidos
+      console.log('Day of Week (Local):', dayOfWeek);
+      console.log('Hour (Local):', hour, 'Minutes (Local):', minutes);
+
+      // Definir horarios permitidos en hora local
       const schedules = {
         weekday: { start: { hour: 11, minutes: 0 }, end: { hour: 19, minutes: 30 } },
         saturday: { start: { hour: 11, minutes: 0 }, end: { hour: 18, minutes: 30 } },
@@ -21,6 +25,7 @@ export default async function handler(req, res) {
       };
 
       let validSchedule = false;
+
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
         validSchedule =
           (hour > schedules.weekday.start.hour || (hour === schedules.weekday.start.hour && minutes >= schedules.weekday.start.minutes)) &&
@@ -29,19 +34,20 @@ export default async function handler(req, res) {
         validSchedule =
           (hour > schedules.saturday.start.hour || (hour === schedules.saturday.start.hour && minutes >= schedules.saturday.start.minutes)) &&
           (hour < schedules.saturday.end.hour || (hour === schedules.saturday.end.hour && minutes <= schedules.saturday.end.minutes));
-      } else if (dayOfWeek === 0) {
+      } else if (dayOfWeek === 7) {
         validSchedule =
           (hour > schedules.sunday.start.hour || (hour === schedules.sunday.start.hour && minutes >= schedules.sunday.start.minutes)) &&
           (hour < schedules.sunday.end.hour || (hour === schedules.sunday.end.hour && minutes <= schedules.sunday.end.minutes));
       }
 
       if (!validSchedule) {
+        console.log('Horario rechazado (Local):', appointmentDate.toISO());
         return res.status(400).json({ error: 'Horario no permitido' });
       }
 
       // Verificar si el horario ya está ocupado
       const existingAppointment = await Appointment.findOne({
-        where: { datetime: datetime },
+        where: { datetime },
       });
 
       if (existingAppointment) {
@@ -71,11 +77,9 @@ export default async function handler(req, res) {
 
     if (slots === 'true') {
       try {
-        const currentDate = new Date();
-        const endOfWeek = new Date();
-        endOfWeek.setDate(currentDate.getDate() + 7);
+        const currentDate = DateTime.local().setZone('America/Mexico_City');
+        const endOfWeek = currentDate.plus({ days: 7 });
 
-        // Generar horarios válidos para los próximos 7 días
         const validSlots = [];
         const schedules = {
           weekday: { start: { hour: 11, minutes: 0 }, end: { hour: 19, minutes: 30 } },
@@ -83,51 +87,47 @@ export default async function handler(req, res) {
           sunday: { start: { hour: 11, minutes: 0 }, end: { hour: 14, minutes: 30 } },
         };
 
-        const date = new Date(currentDate);
+        let date = currentDate.startOf('day');
         while (date <= endOfWeek) {
-          const dayOfWeek = date.getDay();
+          const dayOfWeek = date.weekday;
           const schedule =
             dayOfWeek >= 1 && dayOfWeek <= 5
               ? schedules.weekday
               : dayOfWeek === 6
               ? schedules.saturday
-              : dayOfWeek === 0
+              : dayOfWeek === 7
               ? schedules.sunday
               : null;
 
           if (schedule) {
-            date.setHours(schedule.start.hour, schedule.start.minutes, 0, 0);
+            date = date.set({ hour: schedule.start.hour, minute: schedule.start.minutes });
             while (
-              date.getHours() < schedule.end.hour ||
-              (date.getHours() === schedule.end.hour && date.getMinutes() <= schedule.end.minutes)
+              date.hour < schedule.end.hour ||
+              (date.hour === schedule.end.hour && date.minute <= schedule.end.minutes)
             ) {
-              validSlots.push(new Date(date));
-              date.setMinutes(date.getMinutes() + 30);
+              validSlots.push(date.toISO());
+              date = date.plus({ minutes: 30 });
             }
           }
 
-          // Avanzar al día siguiente
-          date.setDate(date.getDate() + 1);
+          date = date.plus({ days: 1 }).startOf('day');
         }
 
-        // Obtener citas ya ocupadas
         const appointments = await Appointment.findAll({
           where: {
             datetime: {
-              [Op.between]: [currentDate, endOfWeek],
+              [Op.between]: [currentDate.toJSDate(), endOfWeek.toJSDate()],
             },
           },
           attributes: ['datetime'],
         });
 
         const occupiedSlots = appointments.map((app) => app.datetime.toISOString());
-
-        // Filtrar horarios disponibles
         const availableSlots = validSlots
-          .filter((slot) => !occupiedSlots.includes(slot.toISOString()))
+          .filter((slot) => !occupiedSlots.includes(slot))
           .map((slot) => ({
-            datetime: slot.toISOString(),
-            label: slot.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
+            datetime: slot,
+            label: DateTime.fromISO(slot).toLocaleString(DateTime.DATETIME_SHORT),
           }));
 
         res.status(200).json({ slots: availableSlots });
