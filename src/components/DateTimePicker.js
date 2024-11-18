@@ -1,62 +1,74 @@
-// components/StyledDateTimePicker.js
 import React, { useState, useEffect } from 'react';
 
-
-
-
 const StyledDateTimePicker = () => {
-  const [dateOptions, setDateOptions] = useState([]);
-  const [selectedDateTime, setSelectedDateTime] = useState('');
-  const [showPopup, setShowPopup] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
-  const [userData, setUserData] = useState({
-    name: '',
-    phone: '',
-  });
+  const [dateOptions, setDateOptions] = useState([]); // Horarios disponibles
+  const [selectedDateTime, setSelectedDateTime] = useState(''); // Horario seleccionado
+  const [showPopup, setShowPopup] = useState(false); // Estado para mostrar el popup
+  const [showSummary, setShowSummary] = useState(false); // Estado para mostrar el resumen
+  const [userData, setUserData] = useState({ name: '', phone: '' }); // Datos del usuario
 
+  // Obtener horarios disponibles al cargar el componente
   useEffect(() => {
-    generateDateOptions();
+    fetchAvailableSlots();
   }, []);
 
-  const generateDateOptions = () => {
-    const options = [];
-    const date = new Date();
-    date.setHours(10, 0, 0, 0);
-
-    while (date.getHours() < 20 || (date.getHours() === 20 && date.getMinutes() === 0)) {
-      const formattedDateTime = formatDate(date);
-      options.push(formattedDateTime);
-      date.setMinutes(date.getMinutes() + 30);
+  const fetchAvailableSlots = async () => {
+    try {
+      const response = await fetch('/api/appointments?slots=true'); // Endpoint para obtener horarios disponibles
+      const data = await response.json();
+      if (response.ok) {
+        setDateOptions(data.slots); // Establecer horarios disponibles
+      } else {
+        console.error('Error al obtener horarios:', data.error);
+      }
+    } catch (error) {
+      console.error('Error al conectar con el servidor:', error);
     }
-
-    setDateOptions(options);
   };
 
-  const formatDate = (date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-
-    const formattedTime = `${hours % 12 || 12}:${minutes} ${ampm}`;
-    return `${day}/${month}/${year} ${formattedTime}`;
-  };
-
+  // Manejar el envío del formulario
   const handleSubmit = (e) => {
     e.preventDefault();
-    setShowPopup(true);
+    if (!selectedDateTime) {
+      alert('Por favor selecciona un horario');
+      return;
+    }
+    setShowPopup(true); // Mostrar popup para capturar datos adicionales
   };
 
-  const handleConfirm = () => {
-    setShowPopup(false);
-    setShowSummary(true); // Mostrar el resumen de la cita después de confirmar
+  // Confirmar y guardar la cita
+  const handleConfirm = async () => {
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: userData.name,
+          phone: userData.phone,
+          datetime: selectedDateTime,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert('¡Cita agendada con éxito!');
+        setShowPopup(false);
+        setShowSummary(true); // Mostrar resumen de la cita
+      } else {
+        alert(data.error || 'Error al agendar la cita.');
+      }
+    } catch (error) {
+      console.error('Error al conectar con el servidor:', error);
+      alert('Error al conectar con el servidor.');
+    }
   };
 
+  // Calcular la hora límite para cancelar la cita
   const calculateCancelDeadline = () => {
     const appointmentDate = new Date(selectedDateTime);
-    appointmentDate.setMinutes(appointmentDate.getMinutes() - 30); // Restar 30 minutos
+    appointmentDate.setMinutes(appointmentDate.getMinutes() - 30);
     return appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -64,7 +76,10 @@ const StyledDateTimePicker = () => {
     <div className="grid place-items-center p-8">
       {/* Formulario principal */}
       {!showSummary && (
-        <form className="w-80 h-[472px] p-6 bg-gray-900 shadow-[0_15px_60px] shadow-green-500 outline outline-1 outline-green-600 rounded-lg" onSubmit={handleSubmit}>
+        <form
+          className="w-80 h-[472px] p-6 bg-gray-900 shadow-[0_15px_60px] shadow-green-500 outline outline-1 outline-green-600 rounded-lg"
+          onSubmit={handleSubmit}
+        >
           <div className="flex flex-col items-center text-center mb-10">
             <h1 className="text-green-500 font-semibold text-4xl">Agendar Cita</h1>
             <p className="text-white text-lg mt-4">Seleccione Fecha y Hora</p>
@@ -79,8 +94,8 @@ const StyledDateTimePicker = () => {
               >
                 <option value="">Seleccione una opción</option>
                 {dateOptions.map((option, index) => (
-                  <option key={index} value={option} className="text-black">
-                    {option}
+                  <option key={index} value={option.datetime} className="text-black">
+                    {option.label} {/* Mostrar la fecha y hora en formato legible */}
                   </option>
                 ))}
               </select>
