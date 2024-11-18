@@ -1,4 +1,4 @@
-// components/SectionWithCards.js
+
 import React from "react";
 
 
