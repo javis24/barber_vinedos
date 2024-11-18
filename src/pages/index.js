@@ -2,8 +2,7 @@
 import React from "react";
 import HomePage from "../components/HomePage";
 import SectionWithCards from "../components/SectionWithCards";
-import '../styles/globals.css';
-
+import '../src/styles/globals.css';
 
 
 const Index = () => {

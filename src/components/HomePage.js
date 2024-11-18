@@ -1,7 +1,7 @@
 // pages/index.js
 import React from 'react';
 import { useRouter } from 'next/router';
-import '../styles/globals.css';
+import '../src/styles/globals.css';
 
 const HomePage = () => {
   const router = useRouter();
