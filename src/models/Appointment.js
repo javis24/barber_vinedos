@@ -1,9 +1,7 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const Client = require('./Client'); 
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/database';
 
 const Appointment = sequelize.define('Appointment', {
- 
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -19,18 +17,8 @@ const Appointment = sequelize.define('Appointment', {
   },
   clientId: {
     type: DataTypes.INTEGER,
-    references: {
-      model: Client,
-      key: 'id',
-    },
-    onDelete: 'CASCADE',
+    allowNull: false,
   },
-}, {
-  timestamps: true,
 });
 
-// Relación entre modelos
-Client.hasMany(Appointment, { foreignKey: 'clientId' });
-Appointment.belongsTo(Client, { foreignKey: 'clientId' });
-
-module.exports = Appointment;
+export default Appointment;

@@ -1,66 +1,125 @@
-import { DateTime } from 'luxon';
-import Client from '../../../models/Client';
-import Appointment from '../../../models/Appointment';
-import { Op } from 'sequelize';
+import models from '../../../models';
 
-export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    const { name, phone, datetime } = req.body;
+const { Appointment, Client } = models;
 
-    try {
-      // Interpreta la fecha enviada directamente como local
-      const appointmentDate = DateTime.fromISO(datetime, { zone: 'America/Mexico_City' });
-      const dayOfWeek = appointmentDate.weekday; // 1 = Lunes, ..., 7 = Domingo
-      const hour = appointmentDate.hour;
-      const minutes = appointmentDate.minute;
+const generateAvailableSlots = () => {
+  const slots = [];
+  const startTimes = {
+    weekday: "11:00",
+    saturday: "11:00",
+    sunday: "11:00",
+  };
+  const endTimes = {
+    weekday: "19:30",
+    saturday: "18:30",
+    sunday: "14:30",
+  };
 
-      console.log('Day of Week (Local):', dayOfWeek);
-      console.log('Hour (Local):', hour, 'Minutes (Local):', minutes);
+  const incrementMinutes = 30;
 
-      // Definir horarios permitidos en hora local
-      const schedules = {
-        weekday: { start: { hour: 11, minutes: 0 }, end: { hour: 19, minutes: 30 } },
-        saturday: { start: { hour: 11, minutes: 0 }, end: { hour: 18, minutes: 30 } },
-        sunday: { start: { hour: 11, minutes: 0 }, end: { hour: 14, minutes: 30 } },
-      };
+  const daysOfWeek = [
+    "Domingo",
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+  ];
 
-      let validSchedule = false;
+  const today = new Date();
 
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        validSchedule =
-          (hour > schedules.weekday.start.hour || (hour === schedules.weekday.start.hour && minutes >= schedules.weekday.start.minutes)) &&
-          (hour < schedules.weekday.end.hour || (hour === schedules.weekday.end.hour && minutes <= schedules.weekday.end.minutes));
-      } else if (dayOfWeek === 6) {
-        validSchedule =
-          (hour > schedules.saturday.start.hour || (hour === schedules.saturday.start.hour && minutes >= schedules.saturday.start.minutes)) &&
-          (hour < schedules.saturday.end.hour || (hour === schedules.saturday.end.hour && minutes <= schedules.saturday.end.minutes));
-      } else if (dayOfWeek === 7) {
-        validSchedule =
-          (hour > schedules.sunday.start.hour || (hour === schedules.sunday.start.hour && minutes >= schedules.sunday.start.minutes)) &&
-          (hour < schedules.sunday.end.hour || (hour === schedules.sunday.end.hour && minutes <= schedules.sunday.end.minutes));
-      }
+  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+    const currentDay = new Date(today);
+    currentDay.setDate(today.getDate() + dayIndex);
+    const dayName = daysOfWeek[currentDay.getDay()];
 
-      if (!validSchedule) {
-        console.log('Horario rechazado (Local):', appointmentDate.toISO());
-        return res.status(400).json({ error: 'Horario no permitido' });
-      }
+    const start =
+      dayName === "Sábado"
+        ? startTimes.saturday
+        : dayName === "Domingo"
+        ? startTimes.sunday
+        : startTimes.weekday;
+    const end =
+      dayName === "Sábado"
+        ? endTimes.saturday
+        : dayName === "Domingo"
+        ? endTimes.sunday
+        : endTimes.weekday;
 
-      // Verificar si el horario ya está ocupado
-      const existingAppointment = await Appointment.findOne({
-        where: { datetime },
+    let current = new Date(`${currentDay.toISOString().split('T')[0]}T${start}:00`);
+    const limit = new Date(`${currentDay.toISOString().split('T')[0]}T${end}:00`);
+
+    while (current <= limit) {
+      slots.push({
+        day: dayName,
+        datetime: current.toISOString(),
+        label: `${dayName} - ${current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       });
 
-      if (existingAppointment) {
-        return res.status(400).json({ error: 'Este horario ya está ocupado' });
+      current = new Date(current.getTime() + incrementMinutes * 60000);
+    }
+  }
+  return slots;
+};
+
+export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    if (req.query.slots === 'true') {
+      try {
+        const availableSlots = generateAvailableSlots();
+
+        // Obtener citas existentes
+        const appointments = await Appointment.findAll({
+          attributes: ['datetime'],
+        });
+
+        const bookedTimes = appointments.map((app) => app.datetime);
+
+        // Filtrar horarios ocupados
+        const filteredSlots = availableSlots.filter(
+          (slot) => !bookedTimes.includes(slot.datetime)
+        );
+
+        return res.status(200).json({ slots: filteredSlots });
+      } catch (error) {
+        console.error('Error al generar horarios disponibles:', error);
+        return res.status(500).json({ error: 'Error al generar horarios disponibles' });
+      }
+    }
+
+    // Si no se especifica `slots=true`, devolver todas las citas
+    try {
+      const appointments = await Appointment.findAll({
+        include: [{ model: Client, attributes: ['name', 'phone'] }],
+      });
+      res.status(200).json({ appointments });
+    } catch (error) {
+      console.error('Error al obtener citas:', error);
+      res.status(500).json({ error: 'Error al obtener citas' });
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const { name, phone, datetime } = req.body;
+  
+      // Validar campos requeridos
+      if (!name || !phone || !datetime) {
+        return res.status(400).json({ error: 'El nombre, teléfono y horario son obligatorios' });
       }
 
-      // Buscar o crear al cliente
+      // Validar cita duplicada
+      const existingAppointment = await Appointment.findOne({ where: { datetime } });
+      if (existingAppointment) {
+        return res.status(400).json({ error: 'Este horario ya está reservado.' });
+      }
+
+      // Verificar o crear cliente
       let client = await Client.findOne({ where: { phone } });
       if (!client) {
         client = await Client.create({ name, phone });
       }
 
-      // Crear la cita
+      // Crear cita
       const appointment = await Appointment.create({
         datetime,
         clientId: client.id,
@@ -69,83 +128,23 @@ export default async function handler(req, res) {
 
       res.status(201).json({ message: 'Cita creada con éxito', appointment });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Error al crear la cita' });
+      console.error('Error al crear cita:', error);
+      res.status(500).json({ error: 'Error al crear cita' });
     }
-  } else if (req.method === 'GET') {
-    const { slots } = req.query;
+  } else if (req.method === 'DELETE') {
+    try {
+      const { id } = req.body;
 
-    if (slots === 'true') {
-      try {
-        const currentDate = DateTime.local().setZone('America/Mexico_City');
-        const endOfWeek = currentDate.plus({ days: 7 });
-
-        const validSlots = [];
-        const schedules = {
-          weekday: { start: { hour: 11, minutes: 0 }, end: { hour: 19, minutes: 30 } },
-          saturday: { start: { hour: 11, minutes: 0 }, end: { hour: 18, minutes: 30 } },
-          sunday: { start: { hour: 11, minutes: 0 }, end: { hour: 14, minutes: 30 } },
-        };
-
-        let date = currentDate.startOf('day');
-        while (date <= endOfWeek) {
-          const dayOfWeek = date.weekday;
-          const schedule =
-            dayOfWeek >= 1 && dayOfWeek <= 5
-              ? schedules.weekday
-              : dayOfWeek === 6
-              ? schedules.saturday
-              : dayOfWeek === 7
-              ? schedules.sunday
-              : null;
-
-          if (schedule) {
-            date = date.set({ hour: schedule.start.hour, minute: schedule.start.minutes });
-            while (
-              date.hour < schedule.end.hour ||
-              (date.hour === schedule.end.hour && date.minute <= schedule.end.minutes)
-            ) {
-              validSlots.push(date.toISO());
-              date = date.plus({ minutes: 30 });
-            }
-          }
-
-          date = date.plus({ days: 1 }).startOf('day');
-        }
-
-        const appointments = await Appointment.findAll({
-          where: {
-            datetime: {
-              [Op.between]: [currentDate.toJSDate(), endOfWeek.toJSDate()],
-            },
-          },
-          attributes: ['datetime'],
-        });
-
-        const occupiedSlots = appointments.map((app) => app.datetime.toISOString());
-        const availableSlots = validSlots
-          .filter((slot) => !occupiedSlots.includes(slot))
-          .map((slot) => ({
-            datetime: slot,
-            label: DateTime.fromISO(slot).toLocaleString(DateTime.DATETIME_SHORT),
-          }));
-
-        res.status(200).json({ slots: availableSlots });
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener horarios disponibles' });
+      const appointment = await Appointment.findByPk(id);
+      if (!appointment) {
+        return res.status(404).json({ error: 'Cita no encontrada' });
       }
-    } else {
-      try {
-        const appointments = await Appointment.findAll({
-          include: [Client],
-        });
 
-        res.status(200).json({ appointments });
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener citas' });
-      }
+      await appointment.destroy();
+      res.status(200).json({ message: 'Cita eliminada con éxito' });
+    } catch (error) {
+      console.error('Error al eliminar cita:', error);
+      res.status(500).json({ error: 'Error al eliminar cita' });
     }
   } else {
     res.status(405).json({ error: 'Método no permitido' });

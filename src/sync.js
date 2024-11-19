@@ -1,18 +1,14 @@
-const sequelize = require('./config/database'); // Ruta relativa dentro de `src`
-const Client = require('./models/Client');
-const Appointment = require('./models/Appointment');
+import sequelize from './config/database';
+import './models/Client';
+import './models/Appointment';
 
-(async () => {
+const syncDB = async () => {
   try {
-    await sequelize.authenticate();
-    console.log('Conexión exitosa a la base de datos.');
-
-    // Sincronizar tablas
-    await sequelize.sync({ force: true }); // Elimina y recrea las tablas
-    console.log('Tablas creadas con éxito.');
+    await sequelize.sync({ alter: true }); // Utiliza `alter: true` para aplicar cambios
+    console.log('Base de datos sincronizada');
   } catch (error) {
-    console.error('Error al sincronizar modelos:', error.message);
-  } finally {
-    await sequelize.close();
+    console.error('Error al sincronizar la base de datos:', error);
   }
-})();
+};
+
+syncDB();

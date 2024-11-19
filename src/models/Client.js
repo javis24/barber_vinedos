@@ -1,7 +1,7 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); 
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/database';
 
-const Client = sequelize.define('client', {
+const Client = sequelize.define('Client', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -14,10 +14,7 @@ const Client = sequelize.define('client', {
   phone: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
   },
-}, {
-  timestamps: true, // Habilita las columnas createdAt y updatedAt automáticamente
 });
 
-module.exports = Client;
+export default Client;

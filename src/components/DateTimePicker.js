@@ -14,10 +14,11 @@ const StyledDateTimePicker = () => {
 
   const fetchAvailableSlots = async () => {
     try {
-      const response = await fetch('/api/appointments?slots=true'); // Endpoint para obtener horarios disponibles
+      const response = await fetch('/api/appointments?slots=true');
       const data = await response.json();
-      if (response.ok) {
-        setDateOptions(data.slots); // Establecer horarios disponibles
+      console.log('Horarios disponibles:', data.slots); // Depuración
+      if (response.ok && data.slots) {
+        setDateOptions(data.slots);
       } else {
         console.error('Error al obtener horarios:', data.error);
       }
@@ -25,8 +26,9 @@ const StyledDateTimePicker = () => {
       console.error('Error al conectar con el servidor:', error);
     }
   };
+  
+  
 
-  // Manejar el envío del formulario
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedDateTime) {
@@ -36,34 +38,40 @@ const StyledDateTimePicker = () => {
     setShowPopup(true); // Mostrar popup para capturar datos adicionales
   };
 
-  // Confirmar y guardar la cita
-  const handleConfirm = async () => {
-    try {
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: userData.name,
-          phone: userData.phone,
-          datetime: selectedDateTime,
-        }),
-      });
 
-      const data = await response.json();
-      if (response.ok) {
-        alert('¡Cita agendada con éxito!');
-        setShowPopup(false);
-        setShowSummary(true); // Mostrar resumen de la cita
-      } else {
-        alert(data.error || 'Error al agendar la cita.');
-      }
-    } catch (error) {
-      console.error('Error al conectar con el servidor:', error);
-      alert('Error al conectar con el servidor.');
+  const handleConfirm = async () => {
+  if (!userData.name || !userData.phone) {
+    alert('Por favor ingresa tu nombre y número de teléfono');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/appointments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: userData.name,
+        phone: userData.phone,
+        datetime: selectedDateTime,
+      }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      alert('¡Cita agendada con éxito!');
+      setShowPopup(false);
+      setShowSummary(true); // Mostrar resumen de la cita
+    } else {
+      alert(data.error || 'Error al agendar la cita.');
     }
-  };
+  } catch (error) {
+    console.error('Error al conectar con el servidor:', error);
+    alert('Error al conectar con el servidor.');
+  }
+};
+  
 
   // Calcular la hora límite para cancelar la cita
   const calculateCancelDeadline = () => {
@@ -86,19 +94,19 @@ const StyledDateTimePicker = () => {
           </div>
           <div className="space-y-6">
             <div className="relative w-full">
-              <select
-                className="w-full px-4 py-3 bg-transparent border border-gray-300 rounded-lg text-green-500 text-sm outline-none focus:border-green-500"
-                value={selectedDateTime}
-                onChange={(e) => setSelectedDateTime(e.target.value)}
-                required
-              >
-                <option value="">Seleccione una opción</option>
-                {dateOptions.map((option, index) => (
+            <select
+              className="w-full px-4 py-3 bg-transparent border border-gray-300 rounded-lg text-green-500 text-sm outline-none focus:border-green-500"
+              value={selectedDateTime}
+              onChange={(e) => setSelectedDateTime(e.target.value)}
+              required
+            >
+              <option value="">Seleccione una opción</option>
+              {dateOptions && dateOptions.map((option, index) => (
                   <option key={index} value={option.datetime} className="text-black">
-                    {option.label} {/* Mostrar la fecha y hora en formato legible */}
+                    {option.label}
                   </option>
                 ))}
-              </select>
+            </select>
             </div>
           </div>
           <div className="mt-6">
