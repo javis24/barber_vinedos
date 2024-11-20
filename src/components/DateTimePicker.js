@@ -125,7 +125,7 @@ const StyledDateTimePicker = () => {
           - Teléfono: ${userData.phone}
           - Día y hora: ${formattedDate} a las ${formattedTime}`;
   
-        const adminPhone = "528712194723"; // Cambia esto al número de WhatsApp del administrador
+        const adminPhone = "528711372181"; // Cambia esto al número de WhatsApp del administrador
         const whatsappURL = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
   
         // Abrir el enlace de WhatsApp en una nueva ventana
