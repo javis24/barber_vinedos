@@ -130,7 +130,7 @@ const StyledDateTimePicker = () => {
         const whatsappURL = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
   
         // Abrir WhatsApp en una nueva pestaña
-        window.open(whatsappURL);
+        window.location.href = whatsappURL;
   
         setShowPopup(false);
         setUserData({ name: "", phone: "" });
