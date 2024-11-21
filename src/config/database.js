@@ -10,6 +10,7 @@ const sequelize = new Sequelize(
     dialect: process.env.MYSQL_DIALECT || 'mysql', 
     dialectModule: require('mysql2'),
     logging: false, 
+    timezone: "-06:00",
   }
 );
 

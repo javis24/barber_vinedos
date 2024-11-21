@@ -98,13 +98,15 @@ const StyledDateTimePicker = () => {
     }
   
     try {
+      const selectedDateTimeUTC = new Date(selectedTime).toISOString();
+
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: userData.name,
           phone: userData.phone,
-          datetime: selectedTime, // selectedTime ya contiene la fecha y hora correcta
+          datetime: selectedDateTimeUTC,
         }),
       });
   
@@ -113,7 +115,13 @@ const StyledDateTimePicker = () => {
   
         // Corregir formato de hora según zona horaria local
         const localDate = new Date(selectedTime);
-        const formattedDate = localDate.toLocaleDateString("es-MX", { weekday: "long" });
+        const formattedDate = new Date(appointment.datetime).toLocaleString("es-MX", {
+          timeZone: "America/Mexico_City",
+          weekday: "long",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
         const formattedTime = localDate.toLocaleTimeString("es-MX", {
           hour: "2-digit",
           minute: "2-digit",

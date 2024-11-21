@@ -29,18 +29,30 @@ export default function Registros() {
   }, []);
 
   const filterAppointmentsForToday = (appointments) => {
+    const timeZone = "America/Mexico_City";
+  
     const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfToday = new Date(startOfToday);
+    const startOfToday = new Date(
+      new Date(today).toLocaleString("en-US", { timeZone })
+    );
+    startOfToday.setHours(0, 0, 0, 0);
+  
+    const endOfToday = new Date(
+      new Date(today).toLocaleString("en-US", { timeZone })
+    );
     endOfToday.setHours(23, 59, 59, 999);
-
+  
     const todayAppointments = appointments.filter((appt) => {
-      const appointmentDate = new Date(appt.datetime);
+      const appointmentDate = new Date(
+        new Date(appt.datetime).toLocaleString("en-US", { timeZone })
+      );
       return appointmentDate >= startOfToday && appointmentDate <= endOfToday;
     });
-
+  
     setFilteredAppointments(todayAppointments);
   };
+  
+  
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -48,26 +60,35 @@ export default function Registros() {
       alert("Por favor selecciona una fecha");
       return;
     }
-
+  
+    const timeZone = "America/Mexico_City";
+  
+    // Fecha seleccionada en la zona horaria local
     const selectedDate = new Date(searchDate);
     const startOfSelectedDate = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate()
+      new Date(selectedDate).toLocaleString("en-US", { timeZone })
     );
-    const endOfSelectedDate = new Date(startOfSelectedDate);
+    startOfSelectedDate.setHours(0, 0, 0, 0);
+  
+    const endOfSelectedDate = new Date(
+      new Date(selectedDate).toLocaleString("en-US", { timeZone })
+    );
     endOfSelectedDate.setHours(23, 59, 59, 999);
-
+  
+    // Filtrar citas dentro del rango ajustado
     const filtered = appointments.filter((appt) => {
-      const appointmentDate = new Date(appt.datetime);
+      const appointmentDate = new Date(
+        new Date(appt.datetime).toLocaleString("en-US", { timeZone })
+      );
       return (
         appointmentDate >= startOfSelectedDate &&
         appointmentDate <= endOfSelectedDate
       );
     });
-
+  
     setFilteredAppointments(filtered);
   };
+  
 
   const markAsCompleted = async (id) => {
     try {
@@ -160,11 +181,12 @@ export default function Registros() {
                   {appointment.Client ? appointment.Client.phone : "N/A"}
                 </td>
                 <td className="px-4 py-2 text-center">
-                  {new Date(appointment.datetime).toLocaleString("es-MX", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </td>
+                {new Date(appointment.datetime).toLocaleString("es-MX", {
+                  timeZone: "America/Mexico_City",
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              </td>
                 <td className="px-4 py-2 text-center capitalize">
                   {appointment.status}
                 </td>
