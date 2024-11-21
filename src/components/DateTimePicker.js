@@ -99,7 +99,7 @@ const StyledDateTimePicker = () => {
   
     try {
       const selectedDateTimeUTC = new Date(selectedTime).toISOString();
-
+  
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,30 +114,23 @@ const StyledDateTimePicker = () => {
         alert("¡Cita agendada con éxito!");
   
         // Corregir formato de hora según zona horaria local
-        const localDate = new Date(selectedTime);
-        const formattedDate = new Date(appointment.datetime).toLocaleString("es-MX", {
+        const formattedDate = new Date(selectedTime).toLocaleString("es-MX", {
           timeZone: "America/Mexico_City",
           weekday: "long",
           hour: "2-digit",
           minute: "2-digit",
           hour12: true,
         });
-        const formattedTime = localDate.toLocaleTimeString("es-MX", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true, // Mostrar AM/PM
-        });
   
         const message = `Nueva cita agendada:
           - Nombre: ${userData.name}
           - Teléfono: ${userData.phone}
-          - Día y hora: ${formattedDate} a las ${formattedTime}`;
-  
-        const adminPhone = "528711372181"; // Cambia esto al número de WhatsApp del administrador
+          - Día y hora: ${formattedDate}`;
+        const adminPhone = "528711372181";
         const whatsappURL = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
   
-        // Redirigir directamente a la URL de WhatsApp
-        window.location.href = whatsappURL;
+        // Abrir WhatsApp en una nueva pestaña
+        window.open(whatsappURL);
   
         setShowPopup(false);
         setUserData({ name: "", phone: "" });
@@ -150,10 +143,6 @@ const StyledDateTimePicker = () => {
       console.error("Error al conectar con el servidor:", error);
     }
   };
-  
-  
-  
-
   return (
     <div className="grid place-items-center p-8">
       {!showPopup && (
