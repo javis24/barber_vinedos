@@ -128,8 +128,8 @@ const StyledDateTimePicker = () => {
         const adminPhone = "528711372181"; // Cambia esto al número de WhatsApp del administrador
         const whatsappURL = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
   
-        // Abrir el enlace de WhatsApp en una nueva ventana
-        window.open(whatsappURL, "_blank");
+        // Redirigir directamente a la URL de WhatsApp
+        window.location.href = whatsappURL;
   
         setShowPopup(false);
         setUserData({ name: "", phone: "" });
@@ -142,6 +142,7 @@ const StyledDateTimePicker = () => {
       console.error("Error al conectar con el servidor:", error);
     }
   };
+  
   
   
 

@@ -71,10 +71,12 @@ export default async function handler(req, res) {
 
         // Obtener citas existentes
         const appointments = await Appointment.findAll({
-          attributes: ['datetime'],
+          attributes: ['datetime', 'status'],
         });
 
-        const bookedTimes = appointments.map((app) => app.datetime);
+        const bookedTimes = appointments
+          .filter((app) => app.status === 'scheduled') // Solo horarios "scheduled"
+          .map((app) => app.datetime);
 
         // Filtrar horarios ocupados
         const filteredSlots = availableSlots.filter(
@@ -101,14 +103,14 @@ export default async function handler(req, res) {
   } else if (req.method === 'POST') {
     try {
       const { name, phone, datetime } = req.body;
-  
+
       // Validar campos requeridos
       if (!name || !phone || !datetime) {
         return res.status(400).json({ error: 'El nombre, teléfono y horario son obligatorios' });
       }
 
       // Validar cita duplicada
-      const existingAppointment = await Appointment.findOne({ where: { datetime } });
+      const existingAppointment = await Appointment.findOne({ where: { datetime, status: 'scheduled' } });
       if (existingAppointment) {
         return res.status(400).json({ error: 'Este horario ya está reservado.' });
       }
@@ -145,6 +147,36 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('Error al eliminar cita:', error);
       res.status(500).json({ error: 'Error al eliminar cita' });
+    }
+  } else if (req.method === 'PATCH') {
+    try {
+      const { id, status } = req.body;
+
+      // Validar campos obligatorios
+      if (!id || !status) {
+        return res.status(400).json({ error: 'ID y estado son obligatorios' });
+      }
+
+      // Validar que el estado es válido
+      if (!['scheduled', 'completed', 'canceled'].includes(status)) {
+        return res.status(400).json({ error: 'Estado inválido' });
+      }
+
+      // Buscar la cita por ID
+      const appointment = await Appointment.findByPk(id);
+
+      if (!appointment) {
+        return res.status(404).json({ error: 'Cita no encontrada' });
+      }
+
+      // Actualizar el estado de la cita
+      appointment.status = status;
+      await appointment.save();
+
+      res.status(200).json({ message: 'Estado actualizado con éxito', appointment });
+    } catch (error) {
+      console.error('Error al actualizar el estado de la cita:', error);
+      res.status(500).json({ error: 'Error al actualizar el estado de la cita' });
     }
   } else {
     res.status(405).json({ error: 'Método no permitido' });

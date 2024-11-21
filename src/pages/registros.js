@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 
 export default function Registros() {
   const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchDate, setSearchDate] = useState("");
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -11,8 +13,8 @@ export default function Registros() {
         const data = await response.json();
 
         if (response.ok) {
-          console.log(data); // Verifica la respuesta aquí
           setAppointments(data.appointments);
+          filterAppointmentsForToday(data.appointments); // Filtrar por el día actual al inicio
         } else {
           alert("Error al cargar los registros");
         }
@@ -25,6 +27,76 @@ export default function Registros() {
 
     fetchAppointments();
   }, []);
+
+  const filterAppointmentsForToday = (appointments) => {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todayAppointments = appointments.filter((appt) => {
+      const appointmentDate = new Date(appt.datetime);
+      return appointmentDate >= startOfToday && appointmentDate <= endOfToday;
+    });
+
+    setFilteredAppointments(todayAppointments);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (!searchDate) {
+      alert("Por favor selecciona una fecha");
+      return;
+    }
+
+    const selectedDate = new Date(searchDate);
+    const startOfSelectedDate = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate()
+    );
+    const endOfSelectedDate = new Date(startOfSelectedDate);
+    endOfSelectedDate.setHours(23, 59, 59, 999);
+
+    const filtered = appointments.filter((appt) => {
+      const appointmentDate = new Date(appt.datetime);
+      return (
+        appointmentDate >= startOfSelectedDate &&
+        appointmentDate <= endOfSelectedDate
+      );
+    });
+
+    setFilteredAppointments(filtered);
+  };
+
+  const markAsCompleted = async (id) => {
+    try {
+      const response = await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "completed" }),
+      });
+
+      if (response.ok) {
+        alert("Cita marcada como completada");
+        setAppointments((prev) =>
+          prev.map((appt) =>
+            appt.id === id ? { ...appt, status: "completed" } : appt
+          )
+        );
+        setFilteredAppointments((prev) =>
+          prev.map((appt) =>
+            appt.id === id ? { ...appt, status: "completed" } : appt
+          )
+        );
+      } else {
+        const data = await response.json();
+        alert(data.error || "Error al marcar la cita como completada");
+      }
+    } catch (error) {
+      console.error("Error al marcar cita como completada:", error);
+    }
+  };
 
   const sendWhatsAppMessage = (phone, name) => {
     if (!phone) {
@@ -48,19 +120,38 @@ export default function Registros() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <h1 className="text-center text-3xl font-bold mb-8">Registros de Citas</h1>
+
+      {/* Formulario de búsqueda */}
+      <form onSubmit={handleSearch} className="mb-6">
+        <div className="flex justify-center items-center space-x-4">
+          <input
+            type="date"
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+            className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            Buscar
+          </button>
+        </div>
+      </form>
+
       <div className="overflow-x-auto">
         <table className="table-auto w-full bg-gray-800 rounded-lg shadow-lg">
           <thead>
             <tr className="bg-gray-700">
               <th className="px-4 py-2">Nombre del Cliente</th>
               <th className="px-4 py-2">Teléfono</th>
-              <th className="px-4 py-2">Fecha y Hora de la Cita</th>
-              <th className="px-4 py-2">Estatus de la Cita</th>
+              <th className="px-4 py-2">Fecha y Hora</th>
+              <th className="px-4 py-2">Estatus</th>
               <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {appointments.map((appointment) => (
+            {filteredAppointments.map((appointment) => (
               <tr key={appointment.id} className="border-t border-gray-600">
                 <td className="px-4 py-2 text-center">
                   {appointment.Client ? appointment.Client.name : "N/A"}
@@ -77,7 +168,15 @@ export default function Registros() {
                 <td className="px-4 py-2 text-center capitalize">
                   {appointment.status}
                 </td>
-                <td className="px-4 py-2 text-center">
+                <td className="px-4 py-2 text-center space-x-2">
+                  {appointment.status === "scheduled" && (
+                    <button
+                      onClick={() => markAsCompleted(appointment.id)}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    >
+                      Completada
+                    </button>
+                  )}
                   <button
                     onClick={() =>
                       sendWhatsAppMessage(
