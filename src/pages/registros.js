@@ -29,28 +29,23 @@ export default function Registros() {
   }, []);
 
   const filterAppointmentsForToday = (appointments) => {
-    const timeZone = "America/Mexico_City";
-  
     const today = new Date();
-    const startOfToday = new Date(
-      new Date(today).toLocaleString("en-US", { timeZone })
-    );
+    const timeZoneOffset = today.getTimezoneOffset() * 60000;
+  
+    const startOfToday = new Date(today.getTime() - timeZoneOffset);
     startOfToday.setHours(0, 0, 0, 0);
   
-    const endOfToday = new Date(
-      new Date(today).toLocaleString("en-US", { timeZone })
-    );
+    const endOfToday = new Date(startOfToday);
     endOfToday.setHours(23, 59, 59, 999);
   
     const todayAppointments = appointments.filter((appt) => {
-      const appointmentDate = new Date(
-        new Date(appt.datetime).toLocaleString("en-US", { timeZone })
-      );
+      const appointmentDate = new Date(appt.datetime);
       return appointmentDate >= startOfToday && appointmentDate <= endOfToday;
     });
   
     setFilteredAppointments(todayAppointments);
   };
+  
   
   
 
@@ -61,25 +56,13 @@ export default function Registros() {
       return;
     }
   
-    const timeZone = "America/Mexico_City";
+    // Crear el rango de fechas manualmente a partir de searchDate
+    const startOfSelectedDate = new Date(`${searchDate}T00:00:00`); // Inicio del día
+    const endOfSelectedDate = new Date(`${searchDate}T23:59:59`); // Fin del día
   
-    // Fecha seleccionada en la zona horaria local
-    const selectedDate = new Date(searchDate);
-    const startOfSelectedDate = new Date(
-      new Date(selectedDate).toLocaleString("en-US", { timeZone })
-    );
-    startOfSelectedDate.setHours(0, 0, 0, 0);
-  
-    const endOfSelectedDate = new Date(
-      new Date(selectedDate).toLocaleString("en-US", { timeZone })
-    );
-    endOfSelectedDate.setHours(23, 59, 59, 999);
-  
-    // Filtrar citas dentro del rango ajustado
+    // Filtrar las citas dentro del rango
     const filtered = appointments.filter((appt) => {
-      const appointmentDate = new Date(
-        new Date(appt.datetime).toLocaleString("en-US", { timeZone })
-      );
+      const appointmentDate = new Date(appt.datetime); // Fecha almacenada en la base de datos
       return (
         appointmentDate >= startOfSelectedDate &&
         appointmentDate <= endOfSelectedDate
@@ -88,6 +71,8 @@ export default function Registros() {
   
     setFilteredAppointments(filtered);
   };
+  
+  
   
 
   const markAsCompleted = async (id) => {
