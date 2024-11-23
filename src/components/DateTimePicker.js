@@ -55,23 +55,30 @@ const StyledDateTimePicker = () => {
     // Determinar la fecha base del día seleccionado
     const currentDate = new Date();
     const dayOffset = days.findIndex((d) => d.value === selectedDay);
-    currentDate.setDate(currentDate.getDate() + ((dayOffset + 1) - currentDate.getDay())); // Ajusta al día correcto
+    currentDate.setDate(currentDate.getDate() + ((dayOffset + 1) - currentDate.getDay()));
   
-    const dateBase = currentDate.toISOString().split("T")[0]; // Fecha en formato YYYY-MM-DD
+    const dateBase = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Mexico_City',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(currentDate); // Fecha en formato YYYY-MM-DD
   
-    let currentTime = new Date(`${dateBase}T${start}:00`);
-    const limit = new Date(`${dateBase}T${end}:00`);
+    let currentTime = new Date(`${dateBase}T${start}:00-06:00`);
+    const limit = new Date(`${dateBase}T${end}:00-06:00`);
   
     while (currentTime <= limit) {
-      const datetime = currentTime.toISOString(); // Formato ISO completo
+      const datetime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Mexico_City',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }).format(currentTime);
   
       times.push({
-        value: datetime,
-        label: `${selectedDay.charAt(0).toUpperCase() + selectedDay.slice(1)} - ${currentTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
-        disabled: reservedTimes.includes(datetime), // Comparar con horarios reservados
+        value: currentTime.toISOString(),
+        label: `${selectedDay.charAt(0).toUpperCase() + selectedDay.slice(1)} - ${datetime}`,
+        disabled: reservedTimes.includes(currentTime.toISOString()), // Comparar con horarios reservados
       });
   
       currentTime = new Date(currentTime.getTime() + 30 * 60000); // Incrementar 30 minutos
@@ -79,6 +86,7 @@ const StyledDateTimePicker = () => {
   
     return times;
   };
+  
   
   
 
