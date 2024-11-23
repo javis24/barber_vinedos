@@ -2,66 +2,64 @@ import models from '../../../models';
 
 const { Appointment, Client } = models;
 
+
+
 const generateAvailableSlots = () => {
   const slots = [];
   const startTimes = {
     weekday: "11:00",
-    saturday: "11:00",
+    saturday: "10:00",
     sunday: "11:00",
   };
   const endTimes = {
-    weekday: "19:30",
-    saturday: "18:30",
-    sunday: "14:30",
+    weekday: "20:00",
+    saturday: "19:00",
+    sunday: "15:00",
   };
 
-  const incrementMinutes = 30;
-
-  const daysOfWeek = [
-    "Domingo",
-    "Lunes",
-    "Martes",
-    "Miércoles",
-    "Jueves",
-    "Viernes",
-    "Sábado",
-  ];
-
+  const incrementMinutes = 45; // Intervalos de 45 minutos
+  const daysOfWeek = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const today = new Date();
 
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     const currentDay = new Date(today);
+
+    // Asegurarse de calcular el próximo lunes correctamente
     currentDay.setDate(today.getDate() + dayIndex);
+
     const dayName = daysOfWeek[currentDay.getDay()];
+    const start = dayName === "Sábado" ? startTimes.saturday :
+                  dayName === "Domingo" ? startTimes.sunday :
+                  startTimes.weekday;
 
-    const start =
-      dayName === "Sábado"
-        ? startTimes.saturday
-        : dayName === "Domingo"
-        ? startTimes.sunday
-        : startTimes.weekday;
-    const end =
-      dayName === "Sábado"
-        ? endTimes.saturday
-        : dayName === "Domingo"
-        ? endTimes.sunday
-        : endTimes.weekday;
+    const end = dayName === "Sábado" ? endTimes.saturday :
+                dayName === "Domingo" ? endTimes.sunday :
+                endTimes.weekday;
 
-    let current = new Date(`${currentDay.toISOString().split('T')[0]}T${start}:00`);
-    const limit = new Date(`${currentDay.toISOString().split('T')[0]}T${end}:00`);
+    let current = new Date(`${currentDay.toISOString().split("T")[0]}T${start}:00`);
+    const limit = new Date(`${currentDay.toISOString().split("T")[0]}T${end}:00`);
 
+    // Generar horarios dentro del rango permitido
     while (current <= limit) {
       slots.push({
         day: dayName,
-        datetime: current.toISOString(),
-        label: `${dayName} - ${current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        date: currentDay.toISOString().split("T")[0], // Fecha
+        datetime: current.toISOString(), // Fecha y hora completas
+        label: `${dayName}, ${current.toLocaleDateString()} - ${current.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`,
       });
 
-      current = new Date(current.getTime() + incrementMinutes * 60000);
+      current = new Date(current.getTime() + incrementMinutes * 60000); // Incrementar 45 minutos
     }
   }
+
   return slots;
 };
+
+
+
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {

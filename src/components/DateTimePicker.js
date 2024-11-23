@@ -8,6 +8,7 @@ const StyledDateTimePicker = () => {
     { value: "jueves", label: "Jueves" },
     { value: "viernes", label: "Viernes" },
     { value: "sabado", label: "Sábado" },
+    { value: "domingo", label: "Domingo" },
   ]);
   const [day, setDay] = useState(""); // Día seleccionado
   const [timeOptions, setTimeOptions] = useState([]); // Horarios disponibles según el día
@@ -49,29 +50,38 @@ const StyledDateTimePicker = () => {
   
   const generateAvailableTimes = (selectedDay) => {
     const times = [];
-    const start = "11:00";
-    const end = selectedDay === "sabado" ? "18:30" : "19:30";
+    const start = selectedDay === "domingo" ? "11:00" :
+                selectedDay === "sabado" ? "10:00" : "11:00";
   
-    // Determinar la fecha base del día seleccionado
+    const end = selectedDay === "domingo" ? "15:00" :
+                selectedDay === "sabado" ? "19:00" : "20:00";
+  
     const currentDate = new Date();
-    const dayOffset = days.findIndex((d) => d.value === selectedDay);
-    currentDate.setDate(currentDate.getDate() + ((dayOffset + 1) - currentDate.getDay()));
+    const today = currentDate.getDay(); // Día actual de la semana
+    const targetDay = days.findIndex((d) => d.value === selectedDay) + 1; // Índice del día seleccionado
   
-    const dateBase = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Mexico_City',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+    let dayOffset = targetDay - today; // Diferencia entre el día seleccionado y el actual
+    if (dayOffset <= 0) {
+      dayOffset += 7; // Si ya pasó esta semana, avanzar a la próxima
+    }
+  
+    currentDate.setDate(currentDate.getDate() + dayOffset);
+  
+    const dateBase = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }).format(currentDate); // Fecha en formato YYYY-MM-DD
   
     let currentTime = new Date(`${dateBase}T${start}:00-06:00`);
     const limit = new Date(`${dateBase}T${end}:00-06:00`);
   
     while (currentTime <= limit) {
-      const datetime = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/Mexico_City',
-        hour: '2-digit',
-        minute: '2-digit',
+      const datetime = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Mexico_City",
+        hour: "2-digit",
+        minute: "2-digit",
         hour12: true,
       }).format(currentTime);
   
@@ -81,7 +91,7 @@ const StyledDateTimePicker = () => {
         disabled: reservedTimes.includes(currentTime.toISOString()), // Comparar con horarios reservados
       });
   
-      currentTime = new Date(currentTime.getTime() + 30 * 60000); // Incrementar 30 minutos
+      currentTime = new Date(currentTime.getTime() + 45 * 60000); // Incrementar 45 minutos
     }
   
     return times;
