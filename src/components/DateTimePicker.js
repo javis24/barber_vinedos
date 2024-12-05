@@ -40,8 +40,8 @@ const StyledDateTimePicker = () => {
 
   const generateAvailableTimes = (date) => {
     const times = [];
-    const start = "10:00"; // Hora de inicio
-    const end = "20:00"; // Hora de cierre
+    const start = "11:00"; // Hora de inicio
+    const end = "19:00"; // Hora de cierre
     const dateBase = date;
 
     let currentTime = new Date(`${dateBase}T${start}:00-06:00`);
