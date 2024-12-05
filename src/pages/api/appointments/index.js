@@ -100,10 +100,10 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { name, phone, datetime } = req.body;
+      const { name, phone, datetime, station  } = req.body;
 
       // Validar campos requeridos
-      if (!name || !phone || !datetime) {
+      if (!name || !phone || !datetime || !station) {
         return res.status(400).json({ error: 'El nombre, teléfono y horario son obligatorios' });
       }
 
@@ -124,6 +124,7 @@ export default async function handler(req, res) {
         datetime,
         clientId: client.id,
         status: 'scheduled',
+        station,
       });
 
       res.status(201).json({ message: 'Cita creada con éxito', appointment });

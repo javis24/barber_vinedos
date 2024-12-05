@@ -19,6 +19,10 @@ const Appointment = sequelize.define('Appointment', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+  station: {
+    type: DataTypes.STRING, 
+    allowNull: false, 
+  },
 });
 
 export default Appointment;

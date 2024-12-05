@@ -153,6 +153,7 @@ export default function Registros() {
               <th className="px-4 py-2">Teléfono</th>
               <th className="px-4 py-2">Fecha y Hora</th>
               <th className="px-4 py-2">Estatus</th>
+              <th className="px-4 py-2">Estación</th>
               <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
@@ -174,6 +175,9 @@ export default function Registros() {
               </td>
                 <td className="px-4 py-2 text-center capitalize">
                   {appointment.status}
+                </td>
+                <td className="px-4 py-2 text-center capitalize">
+                  {appointment.station}
                 </td>
                 <td className="px-4 py-2 text-center space-x-2">
                   {appointment.status === "scheduled" && (
