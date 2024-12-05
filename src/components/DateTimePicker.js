@@ -38,34 +38,45 @@ const StyledDateTimePicker = () => {
     }
   };
 
+
   const generateAvailableTimes = (date) => {
     const times = [];
-    const start = "11:00"; // Hora de inicio
-    const end = "19:00"; // Hora de cierre
+    const dayOfWeek = new Date(date).getDay(); // Obtiene el día de la semana (0: Domingo, 6: Sábado)
+  
+    // Definir horarios según el día
+    const start = "11:00";
+    const end = dayOfWeek === 0 ? "18:00" : "21:00"; // Domingo hasta las 6 PM, los demás días hasta las 8 PM
+  
     const dateBase = date;
-
+  
     let currentTime = new Date(`${dateBase}T${start}:00-06:00`);
     const limit = new Date(`${dateBase}T${end}:00-06:00`);
-
-    while (currentTime <= limit) {
+  
+    // Asegurarse de detenerse antes del límite
+    while (currentTime.getTime() < limit.getTime()) {
       const datetime = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Mexico_City",
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
       }).format(currentTime);
-
+  
       times.push({
         value: currentTime.toISOString(),
         label: datetime,
         disabled: reservedTimes.includes(currentTime.toISOString()),
       });
-
-      currentTime = new Date(currentTime.getTime() + 45 * 60000); // Incrementar 45 minutos
+  
+      // Incrementar 1 hora
+      currentTime = new Date(currentTime.getTime() + 60 * 60000);
     }
-
+  
     return times;
   };
+  
+  
+  
+  
 
   const handleSubmit = (e) => {
     e.preventDefault();
