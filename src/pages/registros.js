@@ -6,6 +6,14 @@ export default function Registros() {
   const [loading, setLoading] = useState(true);
   const [searchDate, setSearchDate] = useState("");
 
+  // Función para ordenar las citas por proximidad a la hora actual
+  const sortAppointmentsByProximity = (appointments) => {
+    const now = new Date();
+    return appointments.sort(
+      (a, b) => new Date(a.datetime) - now - (new Date(b.datetime) - now)
+    );
+  };
+
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
@@ -13,8 +21,9 @@ export default function Registros() {
         const data = await response.json();
 
         if (response.ok) {
-          setAppointments(data.appointments);
-          filterAppointmentsForToday(data.appointments); // Filtrar por el día actual al inicio
+          const sortedAppointments = sortAppointmentsByProximity(data.appointments);
+          setAppointments(sortedAppointments);
+          filterAppointmentsForToday(sortedAppointments); // Filtrar por día actual con las citas ordenadas
         } else {
           alert("Error al cargar los registros");
         }
@@ -31,23 +40,21 @@ export default function Registros() {
   const filterAppointmentsForToday = (appointments) => {
     const today = new Date();
     const timeZoneOffset = today.getTimezoneOffset() * 60000;
-  
+
     const startOfToday = new Date(today.getTime() - timeZoneOffset);
     startOfToday.setHours(0, 0, 0, 0);
-  
+
     const endOfToday = new Date(startOfToday);
     endOfToday.setHours(23, 59, 59, 999);
-  
+
     const todayAppointments = appointments.filter((appt) => {
       const appointmentDate = new Date(appt.datetime);
       return appointmentDate >= startOfToday && appointmentDate <= endOfToday;
     });
-  
-    setFilteredAppointments(todayAppointments);
+
+    const sortedTodayAppointments = sortAppointmentsByProximity(todayAppointments);
+    setFilteredAppointments(sortedTodayAppointments);
   };
-  
-  
-  
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -55,25 +62,21 @@ export default function Registros() {
       alert("Por favor selecciona una fecha");
       return;
     }
-  
-    // Crear el rango de fechas manualmente a partir de searchDate
-    const startOfSelectedDate = new Date(`${searchDate}T00:00:00`); // Inicio del día
-    const endOfSelectedDate = new Date(`${searchDate}T23:59:59`); // Fin del día
-  
-    // Filtrar las citas dentro del rango
+
+    const startOfSelectedDate = new Date(`${searchDate}T00:00:00`);
+    const endOfSelectedDate = new Date(`${searchDate}T23:59:59`);
+
     const filtered = appointments.filter((appt) => {
-      const appointmentDate = new Date(appt.datetime); // Fecha almacenada en la base de datos
+      const appointmentDate = new Date(appt.datetime);
       return (
         appointmentDate >= startOfSelectedDate &&
         appointmentDate <= endOfSelectedDate
       );
     });
-  
-    setFilteredAppointments(filtered);
+
+    const sortedFilteredAppointments = sortAppointmentsByProximity(filtered);
+    setFilteredAppointments(sortedFilteredAppointments);
   };
-  
-  
-  
 
   const markAsCompleted = async (id) => {
     try {
@@ -167,12 +170,12 @@ export default function Registros() {
                   {appointment.Client ? appointment.Client.phone : "N/A"}
                 </td>
                 <td className="px-4 py-2 text-center">
-                {new Date(appointment.datetime).toLocaleString("es-MX", {
-                  timeZone: "America/Mexico_City",
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </td>
+                  {new Date(appointment.datetime).toLocaleString("es-MX", {
+                    timeZone: "America/Mexico_City",
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </td>
                 <td className="px-4 py-2 text-center capitalize">
                   {appointment.status}
                 </td>
