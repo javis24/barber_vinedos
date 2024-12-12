@@ -2,8 +2,6 @@ import models from '../../../models';
 
 const { Appointment, Client } = models;
 
-
-
 const generateAvailableSlots = () => {
   const slots = [];
   const startTimes = {
@@ -23,8 +21,6 @@ const generateAvailableSlots = () => {
 
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     const currentDay = new Date(today);
-
-    // Asegurarse de calcular el próximo lunes correctamente
     currentDay.setDate(today.getDate() + dayIndex);
 
     const dayName = daysOfWeek[currentDay.getDay()];
@@ -39,36 +35,32 @@ const generateAvailableSlots = () => {
     let current = new Date(`${currentDay.toISOString().split("T")[0]}T${start}:00`);
     const limit = new Date(`${currentDay.toISOString().split("T")[0]}T${end}:00`);
 
-    // Generar horarios dentro del rango permitido
     while (current <= limit) {
       slots.push({
         day: dayName,
-        date: currentDay.toISOString().split("T")[0], // Fecha
-        datetime: current.toISOString(), // Fecha y hora completas
+        date: currentDay.toISOString().split("T")[0],
+        datetime: current.toISOString(),
         label: `${dayName}, ${current.toLocaleDateString()} - ${current.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         })}`,
       });
-
-      current = new Date(current.getTime() + incrementMinutes * 60000); // Incrementar 45 minutos
+      current = new Date(current.getTime() + incrementMinutes * 60000);
     }
   }
 
   return slots;
 };
 
-
-
-
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     if (req.query.slots === 'true') {
+      const { station } = req.query; // Filtrar por estación
       try {
         const availableSlots = generateAvailableSlots();
 
-        // Obtener citas existentes
         const appointments = await Appointment.findAll({
+          where: { station }, // Filtrar por estación
           attributes: ['datetime', 'status'],
         });
 
@@ -76,7 +68,6 @@ export default async function handler(req, res) {
           .filter((app) => app.status === 'scheduled') // Solo horarios "scheduled"
           .map((app) => app.datetime);
 
-        // Filtrar horarios ocupados
         const filteredSlots = availableSlots.filter(
           (slot) => !bookedTimes.includes(slot.datetime)
         );
@@ -88,7 +79,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Si no se especifica `slots=true`, devolver todas las citas
     try {
       const appointments = await Appointment.findAll({
         include: [{ model: Client, attributes: ['name', 'phone'] }],
@@ -100,26 +90,25 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { name, phone, datetime, station  } = req.body;
+      const { name, phone, datetime, station } = req.body;
 
-      // Validar campos requeridos
       if (!name || !phone || !datetime || !station) {
-        return res.status(400).json({ error: 'El nombre, teléfono y horario son obligatorios' });
+        return res.status(400).json({ error: 'El nombre, teléfono, horario y estación son obligatorios' });
       }
 
-      // Validar cita duplicada
-      const existingAppointment = await Appointment.findOne({ where: { datetime, status: 'scheduled' } });
+      const existingAppointment = await Appointment.findOne({
+        where: { datetime, station, status: 'scheduled' }, // Validar por estación y horario
+      });
+
       if (existingAppointment) {
-        return res.status(400).json({ error: 'Este horario ya está reservado.' });
+        return res.status(400).json({ error: 'Este horario ya está reservado para esta estación.' });
       }
 
-      // Verificar o crear cliente
       let client = await Client.findOne({ where: { phone } });
       if (!client) {
         client = await Client.create({ name, phone });
       }
 
-      // Crear cita
       const appointment = await Appointment.create({
         datetime,
         clientId: client.id,
@@ -151,24 +140,19 @@ export default async function handler(req, res) {
     try {
       const { id, status } = req.body;
 
-      // Validar campos obligatorios
       if (!id || !status) {
         return res.status(400).json({ error: 'ID y estado son obligatorios' });
       }
 
-      // Validar que el estado es válido
       if (!['scheduled', 'completed', 'canceled'].includes(status)) {
         return res.status(400).json({ error: 'Estado inválido' });
       }
 
-      // Buscar la cita por ID
       const appointment = await Appointment.findByPk(id);
-
       if (!appointment) {
         return res.status(404).json({ error: 'Cita no encontrada' });
       }
 
-      // Actualizar el estado de la cita
       appointment.status = status;
       await appointment.save();
 

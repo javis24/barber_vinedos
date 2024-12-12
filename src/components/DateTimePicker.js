@@ -1,35 +1,35 @@
 import React, { useState, useEffect } from "react";
 
 const StyledDateTimePicker = () => {
+  const [stations] = useState([
+    { id: 1, name: "Jesualdo" },
+    { id: 2, name: "Estación 2" },
+    { id: 3, name: "Estación 3" },
+  ]); // Lista fija de estaciones
+  const [selectedStation, setSelectedStation] = useState(""); // Estación seleccionada
   const [selectedDate, setSelectedDate] = useState(""); // Fecha seleccionada
-  const [timeOptions, setTimeOptions] = useState([]); // Horarios disponibles según la fecha
-  const [reservedTimes, setReservedTimes] = useState([]); // Horarios ya reservados
+  const [timeOptions, setTimeOptions] = useState([]); // Horarios disponibles
+  const [reservedTimes, setReservedTimes] = useState([]); // Horarios reservados
   const [selectedTime, setSelectedTime] = useState(""); // Horario seleccionado
-  const [selectedStation, setSelectedStation] = useState(""); 
-  const [showPopup, setShowPopup] = useState(false); // Popup para datos adicionales
+  const [showPopup, setShowPopup] = useState(false); // Popup de confirmación
   const [userData, setUserData] = useState({ name: "", phone: "" }); // Datos del usuario
 
+  // Cargar horarios reservados según la estación y la fecha seleccionadas
   useEffect(() => {
-    fetchReservedTimes();
-  }, []);
-
-  useEffect(() => {
-    // Generar horarios según la fecha seleccionada
-    if (selectedDate) {
-      const availableTimes = generateAvailableTimes(selectedDate);
-      setTimeOptions(availableTimes);
+    if (selectedStation && selectedDate) {
+      fetchReservedTimes();
     }
-  }, [selectedDate, reservedTimes]);
+  }, [selectedStation, selectedDate]);
 
   const fetchReservedTimes = async () => {
     try {
-      const response = await fetch("/api/appointments"); // Consulta a la API para obtener horarios reservados
+      const response = await fetch(
+        `/api/appointments?station=${selectedStation}&date=${selectedDate}`
+      );
       const data = await response.json();
       if (response.ok) {
-        const times = data.appointments.map((appointment) =>
-          new Date(appointment.datetime).toISOString()
-        );
-        setReservedTimes(times); // Guardar horarios reservados
+        setReservedTimes(data.reservedTimes);
+        generateAvailableTimes(selectedDate, data.reservedTimes);
       } else {
         console.error("Error al obtener horarios reservados:", data.error);
       }
@@ -38,108 +38,67 @@ const StyledDateTimePicker = () => {
     }
   };
 
-
-  const generateAvailableTimes = (date) => {
+  const generateAvailableTimes = (date, reserved = []) => {
     const times = [];
-    const dayOfWeek = new Date(date).getDay(); // Obtiene el día de la semana (0: Domingo, 6: Sábado)
-  
-    // Definir horarios según el día
+    const dayOfWeek = new Date(date).getDay(); // Obtiene el día de la semana
     const start = "11:00";
-    const end = dayOfWeek === 0 ? "18:00" : "21:00"; // Domingo hasta las 6 PM, los demás días hasta las 8 PM
+    const end = dayOfWeek === 0 ? "18:00" : "21:00"; // Domingo: 6 PM, otros días: 9 PM
   
-    const dateBase = date;
+    let currentTime = new Date(`${date}T${start}:00-06:00`);
+    const limit = new Date(`${date}T${end}:00-06:00`);
   
-    let currentTime = new Date(`${dateBase}T${start}:00-06:00`);
-    const limit = new Date(`${dateBase}T${end}:00-06:00`);
-  
-    // Asegurarse de detenerse antes del límite
     while (currentTime.getTime() < limit.getTime()) {
-      const datetime = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Mexico_City",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }).format(currentTime);
-  
+      const datetimeISO = currentTime.toISOString();
       times.push({
-        value: currentTime.toISOString(),
-        label: datetime,
-        disabled: reservedTimes.includes(currentTime.toISOString()),
+        value: datetimeISO,
+        label: new Intl.DateTimeFormat("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }).format(currentTime),
+        disabled: reserved.includes(datetimeISO), // Verifica si está reservado
       });
-  
-      // Incrementar 1 hora
-      currentTime = new Date(currentTime.getTime() + 60 * 60000);
+      currentTime = new Date(currentTime.getTime() + 60 * 60000); // Incrementar 1 hora
     }
   
-    return times;
+    setTimeOptions(times);
   };
-  
-  
-  
   
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime) {
+    if (!selectedStation || !selectedDate || !selectedTime) {
       alert("Por favor completa todos los campos antes de continuar");
       return;
     }
     setShowPopup(true);
   };
 
-  
-
   const handleConfirm = async () => {
     if (!userData.name || !userData.phone) {
       alert("Por favor ingresa tu nombre y número de teléfono");
       return;
     }
-  
+
     try {
-      const selectedDateTimeUTC = new Date(selectedTime).toISOString();
-  
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: userData.name,
           phone: userData.phone,
-          datetime: selectedDateTimeUTC,
+          datetime: selectedTime,
           station: selectedStation,
         }),
       });
-  
+
       if (response.ok) {
         alert("¡Cita agendada con éxito!");
-  
-        // Formatear la fecha y hora para el mensaje de WhatsApp
-        const formattedDate = new Date(selectedTime).toLocaleString("es-MX", {
-          timeZone: "America/Mexico_City",
-          weekday: "long",
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        });
-  
-        // Crear el mensaje para WhatsApp
-        const message = `Nueva cita agendada:
-  - Nombre: ${userData.name}
-  - Teléfono: ${userData.phone}
-  - Estación: ${selectedStation}
-  - Día y hora: ${formattedDate}`;
-        const adminPhone = "528711372181";
-        const whatsappURL = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
-  
-        // Abrir WhatsApp en una nueva pestaña
-        window.location.href = whatsappURL;
-  
-        // Reiniciar el formulario y actualizar horarios
         setShowPopup(false);
         setUserData({ name: "", phone: "" });
         setSelectedStation("");
+        setSelectedDate("");
+        setSelectedTime("");
         fetchReservedTimes(); // Actualizar horarios reservados
       } else {
         const data = await response.json();
@@ -149,10 +108,6 @@ const StyledDateTimePicker = () => {
       console.error("Error al conectar con el servidor:", error);
     }
   };
-  
-
-  
-  
 
   return (
     <div className="grid place-items-center p-8">
@@ -162,9 +117,24 @@ const StyledDateTimePicker = () => {
           onSubmit={handleSubmit}
         >
           <h1 className="text-green-500 font-semibold text-4xl mb-4">
-            Selecciona la Fecha y Horario
+            Selecciona la Estación, Fecha y Horario
           </h1>
           <div className="space-y-4">
+            {/* Selección de estación */}
+            <select
+              value={selectedStation}
+              onChange={(e) => setSelectedStation(e.target.value)}
+              className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
+              required
+            >
+              <option value="">Selecciona una estación</option>
+              {stations.map((station) => (
+                <option key={station.name} value={station.name}>
+                  {station.name}
+                </option>
+              ))}
+            </select>
+
             {/* Selección de fecha */}
             <input
               type="date"
@@ -173,6 +143,7 @@ const StyledDateTimePicker = () => {
               className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
               min={new Date().toISOString().split("T")[0]} // Solo fechas futuras
               required
+              disabled={!selectedStation} // Deshabilitar si no se selecciona una estación
             />
 
             {/* Selección de horario */}
@@ -189,17 +160,6 @@ const StyledDateTimePicker = () => {
                   {option.label} {option.disabled ? "(Reservado)" : ""}
                 </option>
               ))}
-            </select>
-            <select
-              value={selectedStation}
-              onChange={(e) => setSelectedStation(e.target.value)}
-              className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
-              required
-            >
-              <option value="">Selecciona una estación</option>
-              <option value="Jesualdo">Jesualdo</option>
-              <option value="Estacion-2">Estación 2</option>
-              <option value="Estacion-3">Estación 3</option>
             </select>
           </div>
           <button
