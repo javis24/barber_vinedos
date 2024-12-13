@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from "react";
 
 const StyledDateTimePicker = () => {
-  const [stations] = useState([
-    { id: 1, name: "Jesualdo" },
-    { id: 2, name: "Estación 2" },
-    { id: 3, name: "Estación 3" },
-  ]); // Lista fija de estaciones
-  const [selectedStation, setSelectedStation] = useState(""); // Estación seleccionada
   const [selectedDate, setSelectedDate] = useState(""); // Fecha seleccionada
-  const [timeOptions, setTimeOptions] = useState([]); // Horarios disponibles
-  const [reservedTimes, setReservedTimes] = useState([]); // Horarios reservados
+  const [timeOptions, setTimeOptions] = useState([]); // Horarios disponibles según la fecha
+  const [reservedTimes, setReservedTimes] = useState([]); // Horarios ya reservados
   const [selectedTime, setSelectedTime] = useState(""); // Horario seleccionado
-  const [showPopup, setShowPopup] = useState(false); // Popup de confirmación
+  const [selectedStation, setSelectedStation] = useState(""); // Estación seleccionada
+  const [showPopup, setShowPopup] = useState(false); // Popup para datos adicionales
   const [userData, setUserData] = useState({ name: "", phone: "" }); // Datos del usuario
 
-  // Cargar horarios reservados según la estación y la fecha seleccionadas
   useEffect(() => {
-    if (selectedStation && selectedDate) {
+    if (selectedDate && selectedStation) {
       fetchReservedTimes();
     }
-  }, [selectedStation, selectedDate]);
+  }, [selectedDate, selectedStation]);
 
   const fetchReservedTimes = async () => {
     try {
@@ -28,8 +22,8 @@ const StyledDateTimePicker = () => {
       );
       const data = await response.json();
       if (response.ok) {
-        setReservedTimes(data.reservedTimes);
-        generateAvailableTimes(selectedDate, data.reservedTimes);
+        setReservedTimes(data.appointments || []);
+        generateAvailableTimes(selectedDate, data.appointments || []);
       } else {
         console.error("Error al obtener horarios reservados:", data.error);
       }
@@ -38,16 +32,16 @@ const StyledDateTimePicker = () => {
     }
   };
 
-  const generateAvailableTimes = (date, reserved = []) => {
+  const generateAvailableTimes = (date, reserved) => {
     const times = [];
-    const dayOfWeek = new Date(date).getDay(); // Obtiene el día de la semana
+    const dayOfWeek = new Date(date).getDay();
     const start = "11:00";
-    const end = dayOfWeek === 0 ? "18:00" : "21:00"; // Domingo: 6 PM, otros días: 9 PM
-  
+    const end = dayOfWeek === 0 ? "18:00" : "21:00";
+
     let currentTime = new Date(`${date}T${start}:00-06:00`);
     const limit = new Date(`${date}T${end}:00-06:00`);
-  
-    while (currentTime.getTime() < limit.getTime()) {
+
+    while (currentTime < limit) {
       const datetimeISO = currentTime.toISOString();
       times.push({
         value: datetimeISO,
@@ -56,18 +50,17 @@ const StyledDateTimePicker = () => {
           minute: "2-digit",
           hour12: true,
         }).format(currentTime),
-        disabled: reserved.includes(datetimeISO), // Verifica si está reservado
+        disabled: reserved.some((r) => r.datetime === datetimeISO),
       });
-      currentTime = new Date(currentTime.getTime() + 60 * 60000); // Incrementar 1 hora
+      currentTime = new Date(currentTime.getTime() + 60 * 60000);
     }
-  
+
     setTimeOptions(times);
   };
-  
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedStation || !selectedDate || !selectedTime) {
+    if (!selectedDate || !selectedTime || !selectedStation) {
       alert("Por favor completa todos los campos antes de continuar");
       return;
     }
@@ -94,6 +87,34 @@ const StyledDateTimePicker = () => {
 
       if (response.ok) {
         alert("¡Cita agendada con éxito!");
+
+        // Formatear la fecha y hora para el mensaje de WhatsApp
+        const formattedDate = new Date(selectedTime).toLocaleString("es-MX", {
+          timeZone: "America/Mexico_City",
+          weekday: "long",
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        // Crear el mensaje para WhatsApp
+        const message = `Nueva cita agendada:
+  - Nombre: ${userData.name}
+  - Teléfono: ${userData.phone}
+  - Estación: ${selectedStation}
+  - Día y hora: ${formattedDate}`;
+        const adminPhone = "528711372181";
+        const whatsappURL = `https://wa.me/${adminPhone}?text=${encodeURIComponent(
+          message
+        )}`;
+
+        // Abrir WhatsApp en una nueva pestaña
+        window.open(whatsappURL, "_blank");
+
+        // Reiniciar el formulario y actualizar horarios
         setShowPopup(false);
         setUserData({ name: "", phone: "" });
         setSelectedStation("");
@@ -120,7 +141,6 @@ const StyledDateTimePicker = () => {
             Selecciona la Estación, Fecha y Horario
           </h1>
           <div className="space-y-4">
-            {/* Selección de estación */}
             <select
               value={selectedStation}
               onChange={(e) => setSelectedStation(e.target.value)}
@@ -128,31 +148,27 @@ const StyledDateTimePicker = () => {
               required
             >
               <option value="">Selecciona una estación</option>
-              {stations.map((station) => (
-                <option key={station.name} value={station.name}>
-                  {station.name}
-                </option>
-              ))}
+              <option value="Jesualdo">Jesualdo</option>
+              <option value="Estación 2">Estación 2</option>
+              <option value="Estación 3">Estación 3</option>
             </select>
 
-            {/* Selección de fecha */}
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
-              min={new Date().toISOString().split("T")[0]} // Solo fechas futuras
+              min={new Date().toISOString().split("T")[0]}
               required
-              disabled={!selectedStation} // Deshabilitar si no se selecciona una estación
+              disabled={!selectedStation}
             />
 
-            {/* Selección de horario */}
             <select
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
               required
-              disabled={!selectedDate} // Deshabilitar si no se selecciona una fecha
+              disabled={!selectedDate}
             >
               <option value="">Selecciona un horario</option>
               {timeOptions.map((option, index) => (
