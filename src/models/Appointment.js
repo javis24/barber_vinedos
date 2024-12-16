@@ -19,7 +19,7 @@ const Appointment = sequelize.define('Appointment', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-  station: {
+  stationId: {
     type: DataTypes.STRING, 
     allowNull: false, 
   },

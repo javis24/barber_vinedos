@@ -1,103 +1,105 @@
 import models from '../../../models';
 
-const { Appointment, Client } = models;
+const { Appointment, Client, Station } = models;
 
-const generateAvailableSlots = () => {
+// Generar horarios disponibles según los horarios de una estación
+const generateAvailableSlots = async (stationId, date) => {
+  const station = await Station.findByPk(stationId);
+
+  // Si no se encuentra una estación, usar valores predeterminados
+  const weekdayStart = station?.weekdayStart || '11:00:00';
+  const weekdayEnd = station?.weekdayEnd || '20:00:00';
+  const saturdayStart = station?.saturdayStart || '11:00:00';
+  const saturdayEnd = station?.saturdayEnd || '20:00:00';
+  const sundayStart = station?.sundayStart || '11:00:00';
+  const sundayEnd = station?.sundayEnd || '16:00:00';
+  const interval = station?.intervalMinutes || 60;
+
+  const dayOfWeek = new Date(date).getDay();
+  const startTime =
+    dayOfWeek === 0
+      ? sundayStart
+      : dayOfWeek === 6
+      ? saturdayStart
+      : weekdayStart;
+  const endTime =
+    dayOfWeek === 0
+      ? sundayEnd
+      : dayOfWeek === 6
+      ? saturdayEnd
+      : weekdayEnd;
+
   const slots = [];
-  const startTimes = {
-    weekday: "11:00",
-    saturday: "10:00",
-    sunday: "11:00",
-  };
-  const endTimes = {
-    weekday: "20:00",
-    saturday: "19:00",
-    sunday: "15:00",
-  };
+  let current = new Date(`${date}T${startTime}`);
+  const limit = new Date(`${date}T${endTime}`);
 
-  const incrementMinutes = 45; // Intervalos de 45 minutos
-  const daysOfWeek = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-  const today = new Date();
-
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const currentDay = new Date(today);
-    currentDay.setDate(today.getDate() + dayIndex);
-
-    const dayName = daysOfWeek[currentDay.getDay()];
-    const start = dayName === "Sábado" ? startTimes.saturday :
-                  dayName === "Domingo" ? startTimes.sunday :
-                  startTimes.weekday;
-
-    const end = dayName === "Sábado" ? endTimes.saturday :
-                dayName === "Domingo" ? endTimes.sunday :
-                endTimes.weekday;
-
-    let current = new Date(`${currentDay.toISOString().split("T")[0]}T${start}:00`);
-    const limit = new Date(`${currentDay.toISOString().split("T")[0]}T${end}:00`);
-
-    while (current <= limit) {
-      slots.push({
-        day: dayName,
-        date: currentDay.toISOString().split("T")[0],
-        datetime: current.toISOString(),
-        label: `${dayName}, ${current.toLocaleDateString()} - ${current.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
-      });
-      current = new Date(current.getTime() + incrementMinutes * 60000);
-    }
+  while (current < limit) {
+    slots.push({
+      datetime: current.toISOString(),
+      label: current.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+    });
+    current = new Date(current.getTime() + interval * 60000);
   }
 
   return slots;
 };
 
+
+// Validar campos requeridos
+const validateFields = (fields, requiredFields) => {
+  const missingFields = requiredFields.filter((field) => !fields[field]);
+  if (missingFields.length > 0) {
+    throw new Error(`Campos faltantes: ${missingFields.join(', ')}`);
+  }
+};
+
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    if (req.query.slots === 'true') {
-      const { station } = req.query; // Filtrar por estación
-      try {
-        const availableSlots = generateAvailableSlots();
+  const { method } = req;
+
+  try {
+    if (method === 'GET') {
+      const { slots, station, date } = req.query;
+
+      if (slots === 'true') {
+        validateFields(req.query, ['station', 'date']);
+
+        const availableSlots = await generateAvailableSlots(station, date);
 
         const appointments = await Appointment.findAll({
-          where: { station }, // Filtrar por estación
+          where: {
+            stationId: station, // Corregido para filtrar por el campo correcto
+            datetime: { [models.Sequelize.Op.like]: `${date}%` },
+          },
           attributes: ['datetime', 'status'],
         });
 
-        const bookedTimes = appointments
-          .filter((app) => app.status === 'scheduled') // Solo horarios "scheduled"
-          .map((app) => app.datetime);
+        const reservedTimes = appointments.map((app) => app.datetime);
 
-        const filteredSlots = availableSlots.filter(
-          (slot) => !bookedTimes.includes(slot.datetime)
-        );
+        const filteredSlots = availableSlots.map((slot) => ({
+          ...slot,
+          disabled: reservedTimes.includes(slot.datetime),
+        }));
 
         return res.status(200).json({ slots: filteredSlots });
-      } catch (error) {
-        console.error('Error al generar horarios disponibles:', error);
-        return res.status(500).json({ error: 'Error al generar horarios disponibles' });
       }
-    }
 
-    try {
       const appointments = await Appointment.findAll({
         include: [{ model: Client, attributes: ['name', 'phone'] }],
       });
-      res.status(200).json({ appointments });
-    } catch (error) {
-      console.error('Error al obtener citas:', error);
-      res.status(500).json({ error: 'Error al obtener citas' });
-    }
-  } else if (req.method === 'POST') {
-    try {
-      const { name, phone, datetime, station } = req.body;
 
-      if (!name || !phone || !datetime || !station) {
-        return res.status(400).json({ error: 'El nombre, teléfono, horario y estación son obligatorios' });
-      }
+      return res.status(200).json({ appointments });
+    }
+
+    if (method === 'POST') {
+      const { name, phone, datetime, station } = req.body;
+      validateFields(req.body, ['name', 'phone', 'datetime', 'station']);
 
       const existingAppointment = await Appointment.findOne({
-        where: { datetime, station, status: 'scheduled' }, // Validar por estación y horario
+        where: { datetime, stationId: station, status: 'scheduled' },
       });
 
       if (existingAppointment) {
@@ -113,55 +115,47 @@ export default async function handler(req, res) {
         datetime,
         clientId: client.id,
         status: 'scheduled',
-        station,
+        stationId: station,
       });
 
-      res.status(201).json({ message: 'Cita creada con éxito', appointment });
-    } catch (error) {
-      console.error('Error al crear cita:', error);
-      res.status(500).json({ error: 'Error al crear cita' });
+      return res.status(201).json({ message: 'Cita creada con éxito.', appointment });
     }
-  } else if (req.method === 'DELETE') {
-    try {
+
+    if (method === 'DELETE') {
       const { id } = req.body;
+      validateFields(req.body, ['id']);
 
       const appointment = await Appointment.findByPk(id);
       if (!appointment) {
-        return res.status(404).json({ error: 'Cita no encontrada' });
+        return res.status(404).json({ error: 'Cita no encontrada.' });
       }
 
       await appointment.destroy();
-      res.status(200).json({ message: 'Cita eliminada con éxito' });
-    } catch (error) {
-      console.error('Error al eliminar cita:', error);
-      res.status(500).json({ error: 'Error al eliminar cita' });
+      return res.status(200).json({ message: 'Cita eliminada con éxito.' });
     }
-  } else if (req.method === 'PATCH') {
-    try {
-      const { id, status } = req.body;
 
-      if (!id || !status) {
-        return res.status(400).json({ error: 'ID y estado son obligatorios' });
-      }
+    if (method === 'PATCH') {
+      const { id, status } = req.body;
+      validateFields(req.body, ['id', 'status']);
 
       if (!['scheduled', 'completed', 'canceled'].includes(status)) {
-        return res.status(400).json({ error: 'Estado inválido' });
+        return res.status(400).json({ error: 'Estado inválido.' });
       }
 
       const appointment = await Appointment.findByPk(id);
       if (!appointment) {
-        return res.status(404).json({ error: 'Cita no encontrada' });
+        return res.status(404).json({ error: 'Cita no encontrada.' });
       }
 
       appointment.status = status;
       await appointment.save();
 
-      res.status(200).json({ message: 'Estado actualizado con éxito', appointment });
-    } catch (error) {
-      console.error('Error al actualizar el estado de la cita:', error);
-      res.status(500).json({ error: 'Error al actualizar el estado de la cita' });
+      return res.status(200).json({ message: 'Estado actualizado con éxito.', appointment });
     }
-  } else {
-    res.status(405).json({ error: 'Método no permitido' });
+
+    return res.status(405).json({ error: 'Método no permitido.' });
+  } catch (error) {
+    console.error(error.message || 'Error en el servidor');
+    res.status(500).json({ error: error.message || 'Error en el servidor' });
   }
 }
