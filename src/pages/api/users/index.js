@@ -1,22 +1,18 @@
-const User = require('../../../models/User');
+const User = require('../../../models/Users');
 const bcrypt = require('bcrypt');
 
 export default async function handler(req, res) {
   switch (req.method) {
     case 'GET':
-      await getUsers(req, res);
-      break;
+      return await getUsers(req, res);
     case 'POST':
-      await createUser(req, res);
-      break;
+      return await createUser(req, res);
     case 'PUT':
-      await updateUser(req, res);
-      break;
+      return await updateUser(req, res);
     case 'DELETE':
-      await deleteUser(req, res);
-      break;
+      return await deleteUser(req, res);
     default:
-      res.status(405).json({ error: 'Método no permitido' });
+      return res.status(405).json({ error: 'Método no permitido' });
   }
 }
 
@@ -39,13 +35,16 @@ async function createUser(req, res) {
     return res.status(400).json({ error: 'Por favor, llena todos los campos obligatorios' });
   }
 
+  if (!/\S+@\S+\.\S+/.test(email)) {
+    return res.status(400).json({ error: 'Formato de correo inválido' });
+  }
+
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
       email,
-      password: hashedPassword,
-      role: role || 'user', // Por defecto el rol es "user"
+      password: await bcrypt.hash(password, 10),
+      role: role || 'user',
     });
 
     res.status(201).json({ message: 'Usuario creado con éxito', user });
@@ -73,7 +72,6 @@ async function updateUser(req, res) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Actualizar los campos según lo enviado en el cuerpo de la petición
     user.name = name || user.name;
     user.email = email || user.email;
     user.role = role || user.role;
@@ -91,9 +89,9 @@ async function updateUser(req, res) {
   }
 }
 
-// Eliminar un usuario
+// Eliminar un usuario (usando query params)
 async function deleteUser(req, res) {
-  const { id } = req.body;
+  const { id } = req.query;
 
   if (!id) {
     return res.status(400).json({ error: 'El ID del usuario es obligatorio' });

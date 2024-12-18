@@ -19,11 +19,11 @@ export default function Registros() {
       try {
         const response = await fetch("/api/appointments");
         const data = await response.json();
-
+  
         if (response.ok) {
-          const sortedAppointments = sortAppointmentsByProximity(data.appointments);
-          setAppointments(sortedAppointments);
-          filterAppointmentsForToday(sortedAppointments); // Filtrar por día actual con las citas ordenadas
+          console.log("Datos recibidos:", data.appointments); // Verifica aquí
+          setAppointments(data.appointments);
+          setFilteredAppointments(data.appointments); // Inicializa el filtro
         } else {
           alert("Error al cargar los registros");
         }
@@ -33,10 +33,10 @@ export default function Registros() {
         setLoading(false);
       }
     };
-
+  
     fetchAppointments();
   }, []);
-
+  
   const filterAppointmentsForToday = (appointments) => {
     const today = new Date();
     const timeZoneOffset = today.getTimezoneOffset() * 60000;
@@ -58,25 +58,23 @@ export default function Registros() {
 
   const handleSearch = (e) => {
     e.preventDefault();
+  
     if (!searchDate) {
       alert("Por favor selecciona una fecha");
       return;
     }
-
-    const startOfSelectedDate = new Date(`${searchDate}T00:00:00`);
-    const endOfSelectedDate = new Date(`${searchDate}T23:59:59`);
-
+  
+    console.log("Fecha seleccionada:", searchDate); // Verificar el valor seleccionado
+  
     const filtered = appointments.filter((appt) => {
-      const appointmentDate = new Date(appt.datetime);
-      return (
-        appointmentDate >= startOfSelectedDate &&
-        appointmentDate <= endOfSelectedDate
-      );
+      console.log("Fecha cita:", appt.date, " - Fecha buscada:", searchDate); // Verifica valores
+      return appt.date === searchDate; // Comparación exacta
     });
-
-    const sortedFilteredAppointments = sortAppointmentsByProximity(filtered);
-    setFilteredAppointments(sortedFilteredAppointments);
+  
+    setFilteredAppointments(filtered);
+    console.log("Citas filtradas después de búsqueda:", filtered); // Verificar resultado
   };
+  
 
   const markAsCompleted = async (id) => {
     try {
@@ -161,51 +159,44 @@ export default function Registros() {
             </tr>
           </thead>
           <tbody>
-            {filteredAppointments.map((appointment) => (
-              <tr key={appointment.id} className="border-t border-gray-600">
-                <td className="px-4 py-2 text-center">
-                  {appointment.Client ? appointment.Client.name : "N/A"}
-                </td>
-                <td className="px-4 py-2 text-center">
-                  {appointment.Client ? appointment.Client.phone : "N/A"}
-                </td>
-                <td className="px-4 py-2 text-center">
-                  {new Date(appointment.datetime).toLocaleString("es-MX", {
-                    timeZone: "America/Mexico_City",
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </td>
-                <td className="px-4 py-2 text-center capitalize">
-                  {appointment.status}
-                </td>
-                <td className="px-4 py-2 text-center capitalize">
-                  {appointment.station}
-                </td>
-                <td className="px-4 py-2 text-center space-x-2">
-                  {appointment.status === "scheduled" && (
+            {filteredAppointments.length > 0 ? (
+              filteredAppointments.map((appointment) => (
+                <tr key={appointment.id} className="border-t border-gray-600">
+                  <td className="px-4 py-2 text-center">
+                    {appointment.Client?.name || "N/A"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {appointment.Client?.phone || "N/A"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {`${appointment.date} ${appointment.time}`}
+                  </td>
+                  <td className="px-4 py-2 text-center capitalize">
+                    {appointment.status}
+                  </td>
+                  <td className="px-4 py-2 text-center capitalize">
+                    {appointment.Station?.name || "N/A"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
                     <button
                       onClick={() => markAsCompleted(appointment.id)}
                       className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
                       Completada
                     </button>
-                  )}
-                  <button
-                    onClick={() =>
-                      sendWhatsAppMessage(
-                        appointment.Client?.phone,
-                        appointment.Client?.name
-                      )
-                    }
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                  >
-                    WhatsApp
-                  </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center py-4">
+                  No hay citas disponibles.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
+
+
         </table>
       </div>
     </div>

@@ -5,7 +5,6 @@ import DateTimePicker from '../components/DateTimePicker';
 const Agenda = () => {
   return (
     <div>
-
       <DateTimePicker />
     </div>
   );

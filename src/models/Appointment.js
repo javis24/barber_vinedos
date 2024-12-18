@@ -1,28 +1,24 @@
-import { DataTypes } from 'sequelize';
-import sequelize from '../config/database';
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
 const Appointment = sequelize.define('Appointment', {
   id: {
     type: DataTypes.INTEGER,
-    primaryKey: true,
     autoIncrement: true,
+    primaryKey: true,
   },
-  datetime: {
-    type: DataTypes.DATE,
+  date: {
+    type: DataTypes.DATEONLY,
+    allowNull: false,
+  },
+  time: {
+    type: DataTypes.TIME,
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('scheduled', 'canceled', 'completed'),
+    type: DataTypes.ENUM('scheduled', 'completed', 'canceled'),
     defaultValue: 'scheduled',
-  },
-  clientId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  stationId: {
-    type: DataTypes.STRING, 
-    allowNull: false, 
   },
 });
 
-export default Appointment;
+module.exports = Appointment;

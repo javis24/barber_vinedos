@@ -18,3 +18,9 @@ Content-Type: application/json
   "role": "admin"
 }
 
+###
+GET http://localhost:3000/api/appointments
+
+
+###
+GET http://localhost:3000/api/appointments/available?date=2024-12-19&station=Estación-2

@@ -4,15 +4,16 @@ const sequelize = require('../config/database');
 const Station = sequelize.define('Station', {
   id: {
     type: DataTypes.INTEGER,
-    primaryKey: true,
     autoIncrement: true,
+    primaryKey: true,
   },
   name: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(255),
     allowNull: false,
   },
   description: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(255),
+    allowNull: true,
   },
   weekdayStart: {
     type: DataTypes.TIME,
@@ -47,7 +48,7 @@ const Station = sequelize.define('Station', {
   intervalMinutes: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    defaultValue: 60,
+    defaultValue: 60, // Intervalos de 60 minutos
   },
 });
 

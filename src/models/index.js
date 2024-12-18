@@ -1,23 +1,20 @@
-import { Sequelize } from 'sequelize';
-import sequelize from '../config/database'; // Asegúrate de que la ruta sea correcta
-import Client from './Client';
-import Appointment from './Appointment';
-import Station from './Station'; // Importa el modelo Station si está definido
+const sequelize = require('../config/database');
+const Station = require('./Station');
+const User = require('./Users');
+const Client = require('./Client');
+const Appointment = require('./Appointment');
 
-// Configurar relaciones
-Client.hasMany(Appointment, { foreignKey: 'clientId', onDelete: 'CASCADE' });
-Appointment.belongsTo(Client, { foreignKey: 'clientId' });
+// Relaciones
+Appointment.belongsTo(Station, { foreignKey: 'stationId', as: 'Station' });
+Station.hasMany(Appointment, { foreignKey: 'stationId', as: 'Appointments' });
 
-Station.hasMany(Appointment, { foreignKey: 'stationId', onDelete: 'CASCADE' });
-Appointment.belongsTo(Station, { foreignKey: 'stationId' });
+Appointment.belongsTo(Client, { foreignKey: 'clientId', as: 'Client' });
+Client.hasMany(Appointment, { foreignKey: 'clientId', as: 'Appointments' });
 
-// Exportar modelos
-const models = {
+module.exports = {
+  sequelize,
+  Station,
+  User,
   Client,
   Appointment,
-  Station,
-  sequelize,
-  Sequelize,
 };
-
-export default models;
