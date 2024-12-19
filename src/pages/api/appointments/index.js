@@ -31,41 +31,45 @@ async function getAppointments(req, res) {
 }
 
 
-async function createAppointment(req, res) {
-  const { date, time, station, name, phone } = req.body;
+const createAppointment = async (req, res) => {
+  const { date, time, stationId, clientId } = req.body;
 
-  if (!date || !time || !station || !name || !phone) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  console.log('Datos recibidos en la API:', { date, time, stationId, clientId });
+
+  if (!date || !time || !stationId || !clientId) {
+      console.error('Datos faltantes en la solicitud:', { date, time, stationId, clientId });
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
   try {
-    // Buscar la estación por nombre
-    const stationData = await Station.findOne({ where: { name: station } });
-    if (!stationData) {
-      return res.status(404).json({ error: 'Estación no encontrada' });
-    }
+      // Verificar si el horario ya está reservado
+      const existingAppointment = await Appointment.findOne({
+          where: { date, time, stationId },
+      });
 
-    // Buscar o crear cliente por nombre y teléfono
-    let clientData = await Client.findOne({ where: { name, phone } });
-    if (!clientData) {
-      clientData = await Client.create({ name, phone });
-    }
+      if (existingAppointment) {
+          console.warn('Horario ya reservado:', { date, time, stationId });
+          return res
+              .status(400)
+              .json({ error: 'El horario ya está reservado. Por favor, selecciona otro.' });
+      }
 
-    // Crear la cita con los IDs
-    const appointment = await Appointment.create({
-      date,
-      time,
-      stationId: stationData.id,
-      clientId: clientData.id,
-    });
+      // Crear la cita si no está reservada
+      const appointment = await Appointment.create({
+          date,
+          time,
+          stationId,
+          clientId,
+          status: 'scheduled',
+      });
 
-    res.status(201).json({ message: 'Cita creada con éxito', appointment });
+      console.log('Cita creada exitosamente:', appointment);
+      res.status(201).json({ message: 'Cita creada con éxito', appointment });
   } catch (error) {
-    console.error('Error al crear la cita:', error);
-    res.status(500).json({ error: 'Error al crear la cita', details: error.message });
+      console.error('Error al crear la cita:', error);
+      res.status(500).json({ error: 'Error al crear la cita' });
   }
-}
-
+};
 
 
 // Función para actualizar una cita

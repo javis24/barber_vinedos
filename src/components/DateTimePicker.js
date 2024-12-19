@@ -15,7 +15,7 @@ const CreateReservation = () => {
     if (selectedDate && selectedStation) {
       fetchAvailableTimes();
     } else {
-      setAvailableTimes([]); // Limpiar horarios si falta algún campo
+      setAvailableTimes([]);
       setSelectedTime('');
     }
   }, [selectedDate, selectedStation]);
@@ -27,11 +27,13 @@ const CreateReservation = () => {
       );
       const data = await response.json();
       setAvailableTimes(data.times || []);
+      console.log('Horarios disponibles:', data.times); // Verifica la estructura aquí
     } catch (error) {
       console.error('Error al obtener horarios disponibles:', error);
       alert('No se pudieron cargar los horarios. Intente nuevamente.');
     }
   };
+  
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -43,31 +45,61 @@ const CreateReservation = () => {
   };
 
   const handleConfirm = async () => {
+    // Simulación de clientId (puedes obtenerlo de tu lógica de autenticación)
+    const clientId = 1; // Cambia esto según sea necesario
+
+    // Mapear stationId desde selectedStation
+    const stationMapping = {
+        'Estación-1': 1,
+        'Estación-2': 2,
+        'Estación-3': 3,
+    };
+    const stationId = stationMapping[selectedStation];
+
+    if (!userData.name || !userData.phone || !selectedDate || !selectedStation || !selectedTime) {
+        alert('Por favor, completa todos los campos antes de confirmar la reserva.');
+        console.log('Datos faltantes:', { 
+            name: userData.name, 
+            phone: userData.phone, 
+            date: selectedDate, 
+            station: selectedStation, 
+            time: selectedTime, 
+            stationId, 
+            clientId 
+        });
+        return;
+    }
+
     const reservationData = {
-      date: selectedDate,
-      station: selectedStation,
-      time: selectedTime,
-      name: userData.name,
-      phone: userData.phone,
+        date: selectedDate,
+        time: selectedTime,
+        stationId, // Ahora se envía stationId
+        clientId, // Ahora se envía clientId
+        name: userData.name,
+        phone: userData.phone,
     };
 
-    try {
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reservationData),
-      });
+    console.log('Datos enviados al servidor:', reservationData);
 
-      if (response.ok) {
-        alert('Reserva confirmada con éxito');
-        resetForm();
-      } else {
-        alert('Error al crear la reserva');
-      }
+    try {
+        const response = await fetch('/api/appointments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reservationData),
+        });
+
+        if (response.ok) {
+            alert('Reserva confirmada con éxito');
+            resetForm();
+        } else {
+            const errorData = await response.json();
+            alert(errorData.error || 'Error al crear la reserva');
+        }
     } catch (error) {
-      console.error('Error al crear la reserva:', error);
+        console.error('Error al crear la reserva:', error);
+        alert('Error inesperado al crear la reserva.');
     }
-  };
+};
 
   const resetForm = () => {
     setShowPopup(false);
@@ -76,6 +108,16 @@ const CreateReservation = () => {
     setSelectedTime('');
     setAvailableTimes([]);
     setUserData({ name: '', phone: '' });
+  };
+
+  const handleTimeChange = (e) => {
+    const selectedOption = availableTimes.find((time) => time.time === e.target.value);
+
+    if (selectedOption?.reserved) {
+      alert('Hora ya reservada. Por favor elige otra.');
+    } else {
+      setSelectedTime(e.target.value);
+    }
   };
 
   return (
@@ -106,7 +148,7 @@ const CreateReservation = () => {
               value={selectedStation}
               onChange={(e) => {
                 setSelectedStation(e.target.value);
-                setSelectedTime(''); // Reiniciar la hora seleccionada
+                setSelectedTime('');
               }}
               className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
             >
@@ -120,31 +162,35 @@ const CreateReservation = () => {
           </div>
 
           {/* Horarios Disponibles */}
-          {availableTimes.length > 0 && (
-            <div className="mb-4">
-              <label className="block text-white mb-2">Horarios Disponibles</label>
-              <select
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
-                required
-              >
-                <option value="">Selecciona un horario</option>
-                {availableTimes.map((time, index) => (
-                  <option key={index} value={time.time} disabled={time.reserved}>
-                    {time.time} {time.reserved ? '(Reservado)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+            {availableTimes.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-white mb-2">Horarios Disponibles</label>
+                <select
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                  className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
+                  required
+                >
+                  <option value="">Selecciona un horario</option>
+                  {availableTimes.map((time, index) => (
+                    <option
+                      key={index}
+                      value={time.time}
+                      disabled={time.reserved} // Deshabilita si está reservado
+                    >
+                      {time.time} {time.reserved ? '(Hora ya reservada)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
           {/* Botón Confirmar */}
           <button
             type="submit"
             className="mt-4 w-full py-2 bg-green-500 text-white rounded-lg"
           >
-            Confirmar Citaa
+            Confirmar Cita
           </button>
         </form>
       )}

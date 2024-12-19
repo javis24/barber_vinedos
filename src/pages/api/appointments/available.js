@@ -10,14 +10,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Buscar la estación específica
-    const stationData = await Station.findOne({ where: { name: station } });
+    // Buscar estación y datos necesarios en una sola consulta
+    const stationData = await Station.findOne({
+      where: { name: station },
+      attributes: ['id', 'weekdayStart', 'weekdayEnd', 'saturdayStart', 'saturdayEnd', 'sundayStart', 'sundayEnd', 'intervalMinutes'],
+    });
 
     if (!stationData) {
       return res.status(404).json({ error: 'Estación no encontrada' });
     }
 
-    // Generar horarios según el día
+    // Determinar horarios según el día
     const dayOfWeek = new Date(date).getDay();
     let start, end;
 
@@ -34,17 +37,18 @@ export default async function handler(req, res) {
 
     const times = generateTimes(start, end, stationData.intervalMinutes);
 
-    // Obtener las citas reservadas SOLO para esta estación
+    // Obtener citas reservadas
     const reservedAppointments = await Appointment.findAll({
       where: {
         date,
-        stationId: stationData.id, // Filtra SOLO por la estación seleccionada
+        stationId: stationData.id,
       },
+      attributes: ['time'], // Solo necesitamos las horas
     });
 
     const reservedTimes = reservedAppointments.map((a) => a.time);
 
-    // Generar lista de horarios disponibles
+    // Generar horarios disponibles
     const availableTimes = times.map((time) => ({
       time,
       reserved: reservedTimes.includes(time),
