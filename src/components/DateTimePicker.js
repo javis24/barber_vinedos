@@ -88,7 +88,22 @@ const CreateReservation = () => {
             body: JSON.stringify(reservationData),
         });
 
+
         if (response.ok) {
+            // Redirigir al WhatsApp del admin con los detalles de la reserva
+            const adminPhone = '5218711372181'; // Número del admin (formato internacional sin +)
+            const message = encodeURIComponent(`
+                Nueva Reserva:
+                Nombre: ${userData.name}
+                Teléfono: ${userData.phone}
+                Fecha: ${selectedDate}
+                Estación: ${selectedStation}
+                Hora: ${selectedTime}
+            `);
+
+            const whatsappURL = `https://wa.me/${adminPhone}?text=${message}`;
+            window.location.href = whatsappURL;
+
             alert('Reserva confirmada con éxito');
             resetForm();
         } else {
