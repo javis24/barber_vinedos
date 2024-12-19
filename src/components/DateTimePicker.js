@@ -26,14 +26,14 @@ const CreateReservation = () => {
         `/api/appointments/available?date=${selectedDate}&station=${selectedStation}`
       );
       const data = await response.json();
-      setAvailableTimes(data.times || []);
-      console.log('Horarios disponibles:', data.times); // Verifica la estructura aquí
+  
+      console.log('Horarios recibidos del backend:', data.times);
+      setAvailableTimes(data.times || []); // Actualiza el estado con los horarios
     } catch (error) {
       console.error('Error al obtener horarios disponibles:', error);
       alert('No se pudieron cargar los horarios. Intente nuevamente.');
     }
   };
-  
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -161,30 +161,29 @@ const CreateReservation = () => {
             </select>
           </div>
 
-          {/* Horarios Disponibles */}
-            {availableTimes.length > 0 && (
-              <div className="mb-4">
-                <label className="block text-white mb-2">Horarios Disponibles</label>
-                <select
-                  value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
-                  required
-                >
-                  <option value="">Selecciona un horario</option>
-                  {availableTimes.map((time, index) => (
-                    <option
-                      key={index}
-                      value={time.time}
-                      disabled={time.reserved} // Deshabilita si está reservado
-                    >
-                      {time.time} {time.reserved ? '(Hora ya reservada)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
+          {console.log('Horarios procesados en el componente:', availableTimes)}
+              {availableTimes.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-white mb-2">Horarios Disponibles</label>
+                  <select
+                    value={selectedTime}
+                    onChange={handleTimeChange}
+                    className="w-full px-4 py-2 bg-transparent border border-gray-300 rounded-lg text-green-500"
+                    required
+                  >
+                    <option value="">Selecciona un horario</option>
+                    {availableTimes.map((time, index) => (
+                      <option
+                        key={index}
+                        value={time.time}
+                        disabled={time.reserved} // Deshabilita si está reservado
+                      >
+                        {time.time} {time.reserved ? '(Hora ya reservada)' : ''}
+                      </option>
+                    ))}
+                  </select>;
+                </div>
+              )}
           {/* Botón Confirmar */}
           <button
             type="submit"
