@@ -4,7 +4,9 @@ export default function Registros() {
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchDate, setSearchDate] = useState("");
+  const [searchDate, setSearchDate] = useState(
+    new Date().toISOString().split("T")[0] // Fecha actual como valor inicial
+  );
 
   // Función para ordenar las citas por proximidad a la hora actual
   const sortAppointmentsByProximity = (appointments) => {
@@ -19,11 +21,13 @@ export default function Registros() {
       try {
         const response = await fetch("/api/appointments");
         const data = await response.json();
-  
+
         if (response.ok) {
-          console.log("Datos recibidos:", data.appointments); // Verifica aquí
+          console.log("Datos recibidos:", data.appointments);
           setAppointments(data.appointments);
-          setFilteredAppointments(data.appointments); // Inicializa el filtro
+
+          // Filtrar las citas del día actual al cargar
+          filterAppointmentsByDate(new Date().toISOString().split("T")[0], data.appointments);
         } else {
           alert("Error al cargar los registros");
         }
@@ -33,48 +37,29 @@ export default function Registros() {
         setLoading(false);
       }
     };
-  
+
     fetchAppointments();
   }, []);
-  
-  const filterAppointmentsForToday = (appointments) => {
-    const today = new Date();
-    const timeZoneOffset = today.getTimezoneOffset() * 60000;
 
-    const startOfToday = new Date(today.getTime() - timeZoneOffset);
-    startOfToday.setHours(0, 0, 0, 0);
+  const filterAppointmentsByDate = (date, allAppointments = appointments) => {
+    console.log("Filtrando citas para la fecha:", date);
 
-    const endOfToday = new Date(startOfToday);
-    endOfToday.setHours(23, 59, 59, 999);
+    const filtered = allAppointments.filter((appt) => appt.date === date);
+    const sorted = sortAppointmentsByProximity(filtered);
 
-    const todayAppointments = appointments.filter((appt) => {
-      const appointmentDate = new Date(appt.datetime);
-      return appointmentDate >= startOfToday && appointmentDate <= endOfToday;
-    });
-
-    const sortedTodayAppointments = sortAppointmentsByProximity(todayAppointments);
-    setFilteredAppointments(sortedTodayAppointments);
+    setFilteredAppointments(sorted);
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-  
+
     if (!searchDate) {
       alert("Por favor selecciona una fecha");
       return;
     }
-  
-    console.log("Fecha seleccionada:", searchDate); // Verificar el valor seleccionado
-  
-    const filtered = appointments.filter((appt) => {
-      console.log("Fecha cita:", appt.date, " - Fecha buscada:", searchDate); // Verifica valores
-      return appt.date === searchDate; // Comparación exacta
-    });
-  
-    setFilteredAppointments(filtered);
-    console.log("Citas filtradas después de búsqueda:", filtered); // Verificar resultado
+
+    filterAppointmentsByDate(searchDate);
   };
-  
 
   const markAsCompleted = async (id) => {
     try {
@@ -195,8 +180,6 @@ export default function Registros() {
               </tr>
             )}
           </tbody>
-
-
         </table>
       </div>
     </div>
