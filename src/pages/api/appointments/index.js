@@ -32,44 +32,56 @@ async function getAppointments(req, res) {
 
 
 const createAppointment = async (req, res) => {
-  const { date, time, stationId, clientId } = req.body;
+  const { date, time, stationId, clientName, clientPhone } = req.body;
 
-  console.log('Datos recibidos en la API:', { date, time, stationId, clientId });
+  console.log('Datos recibidos en la API:', { date, time, stationId, clientName, clientPhone });
 
-  if (!date || !time || !stationId || !clientId) {
-      console.error('Datos faltantes en la solicitud:', { date, time, stationId, clientId });
-      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  if (!date || !time || !stationId || !clientName || !clientPhone) {
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
   try {
-      // Verificar si el horario ya está reservado
-      const existingAppointment = await Appointment.findOne({
-          where: { date, time, stationId },
+    // Verificar si el cliente ya existe por nombre o teléfono
+    let client = await Client.findOne({
+      where: { name: clientName, phone: clientPhone },
+    });
+
+    // Si no existe, crear el cliente
+    if (!client) {
+      client = await Client.create({
+        name: clientName,
+        phone: clientPhone,
       });
+    }
 
-      if (existingAppointment) {
-          console.warn('Horario ya reservado:', { date, time, stationId });
-          return res
-              .status(400)
-              .json({ error: 'El horario ya está reservado. Por favor, selecciona otro.' });
-      }
+    // Verificar si el horario ya está reservado
+    const existingAppointment = await Appointment.findOne({
+      where: { date, time, stationId },
+    });
 
-      // Crear la cita si no está reservada
-      const appointment = await Appointment.create({
-          date,
-          time,
-          stationId,
-          clientId,
-          status: 'scheduled',
+    if (existingAppointment) {
+      return res.status(400).json({
+        error: 'El horario ya está reservado. Por favor, selecciona otro.',
       });
+    }
 
-      console.log('Cita creada exitosamente:', appointment);
-      res.status(201).json({ message: 'Cita creada con éxito', appointment });
+    // Crear la cita si no está reservada
+    const appointment = await Appointment.create({
+      date,
+      time,
+      stationId,
+      clientId: client.id,
+      status: 'scheduled',
+    });
+
+    res.status(201).json({ message: 'Cita creada con éxito', appointment });
   } catch (error) {
-      console.error('Error al crear la cita:', error);
-      res.status(500).json({ error: 'Error al crear la cita' });
+    console.error('Error al crear la cita:', error);
+    res.status(500).json({ error: 'Error al crear la cita' });
   }
 };
+
+
 
 
 // Función para actualizar una cita

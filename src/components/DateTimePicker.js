@@ -8,7 +8,7 @@ const CreateReservation = () => {
   const [userData, setUserData] = useState({ name: '', phone: '' });
   const [showPopup, setShowPopup] = useState(false);
 
-  const stationOptions = ['Estación-1', 'Estación-2', 'Estación-3'];
+  const stationOptions = ['Estación-1', 'Jesualdo', 'Gael'];
 
   // Obtener horarios disponibles cuando se selecciona estación y fecha
   useEffect(() => {
@@ -45,48 +45,44 @@ const CreateReservation = () => {
   };
 
   const handleConfirm = async () => {
-    // Simulación de clientId (puedes obtenerlo de tu lógica de autenticación)
-    const clientId = 1; // Cambia esto según sea necesario
-
     // Mapear stationId desde selectedStation
     const stationMapping = {
-        'Estación-1': 1,
-        'Estación-2': 2,
-        'Estación-3': 3,
+      'Estación-1': 1,
+      'Jesualdo': 2,
+      'Gael': 3,
     };
     const stationId = stationMapping[selectedStation];
-
+  
+    // Validar campos obligatorios
     if (!userData.name || !userData.phone || !selectedDate || !selectedStation || !selectedTime) {
-        alert('Por favor, completa todos los campos antes de confirmar la reserva.');
-        console.log('Datos faltantes:', { 
-            name: userData.name, 
-            phone: userData.phone, 
-            date: selectedDate, 
-            station: selectedStation, 
-            time: selectedTime, 
-            stationId, 
-            clientId 
-        });
-        return;
+      alert('Por favor, completa todos los campos antes de confirmar la reserva.');
+      console.log('Datos faltantes:', { 
+        name: userData.name, 
+        phone: userData.phone, 
+        date: selectedDate, 
+        station: selectedStation, 
+        time: selectedTime, 
+        stationId 
+      });
+      return;
     }
 
     const reservationData = {
-        date: selectedDate,
-        time: selectedTime,
-        stationId, // Ahora se envía stationId
-        clientId, // Ahora se envía clientId
-        name: userData.name,
-        phone: userData.phone,
+      date: selectedDate,
+      time: selectedTime,
+      stationId,
+      clientName: userData.name, // Enviar nombre del cliente
+      clientPhone: userData.phone, // Enviar teléfono del cliente
     };
-
-    console.log('Datos enviados al servidor:', reservationData);
+  
+    console.log('Datos enviados al backend:', reservationData);
 
     try {
-        const response = await fetch('/api/appointments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(reservationData),
-        });
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reservationData),
+      });
 
 
         if (response.ok) {
@@ -116,14 +112,15 @@ const CreateReservation = () => {
     }
 };
 
-  const resetForm = () => {
-    setShowPopup(false);
-    setSelectedDate('');
-    setSelectedStation('');
-    setSelectedTime('');
-    setAvailableTimes([]);
-    setUserData({ name: '', phone: '' });
-  };
+const resetForm = () => {
+  setShowPopup(false);
+  setSelectedDate(''); // Reinicia la fecha seleccionada
+  setSelectedStation('');
+  setSelectedTime('');
+  setAvailableTimes([]);
+  setUserData({ name: '', phone: '' });
+};
+
 
   const handleTimeChange = (e) => {
     const selectedOption = availableTimes.find((time) => time.time === e.target.value);
@@ -148,13 +145,17 @@ const CreateReservation = () => {
 
           {/* Input de Fecha */}
           <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full px-4 py-2 mb-4 bg-transparent border border-gray-300 rounded-lg text-green-500"
-            min={new Date().toISOString().split('T')[0]}
-            required
-          />
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                const localDate = new Date(e.target.value);
+                const utcDate = new Date(localDate.getTime() + localDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                setSelectedDate(utcDate);
+              }}
+              className="w-full px-4 py-2 mb-4 bg-transparent border border-gray-300 rounded-lg text-green-500"
+              min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]} // Fecha mínima en zona horaria local
+              required
+            />
 
           {/* Selección de Estación */}
           <div className="mb-4">

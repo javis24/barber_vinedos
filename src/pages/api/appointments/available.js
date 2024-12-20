@@ -13,17 +13,29 @@ export default async function handler(req, res) {
     // Buscar estación y datos necesarios en una sola consulta
     const stationData = await Station.findOne({
       where: { name: station },
-      attributes: ['id', 'weekdayStart', 'weekdayEnd', 'saturdayStart', 'saturdayEnd', 'sundayStart', 'sundayEnd', 'intervalMinutes'],
+      attributes: [
+        'id',
+        'weekdayStart',
+        'weekdayEnd',
+        'saturdayStart',
+        'saturdayEnd',
+        'sundayStart',
+        'sundayEnd',
+        'intervalMinutes',
+      ],
     });
 
     if (!stationData) {
       return res.status(404).json({ error: 'Estación no encontrada' });
     }
 
-    // Determinar horarios según el día
-    const dayOfWeek = new Date(date).getDay();
+    // Ajustar la fecha a la zona horaria correcta
+    const localDate = new Date(new Date(`${date}T00:00:00`).toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+    const dayOfWeek = localDate.getDay(); // Obtener el día de la semana en la zona horaria correcta
+
     let start, end;
 
+    // Determinar horarios según el día
     if (dayOfWeek === 0) {
       start = stationData.sundayStart;
       end = stationData.sundayEnd;
@@ -37,32 +49,29 @@ export default async function handler(req, res) {
 
     const times = generateTimes(start, end, stationData.intervalMinutes);
 
-   
-   // Obtener citas reservadas
-        const reservedAppointments = await Appointment.findAll({
-          where: {
-            date,
-            stationId: stationData.id,
-          },
-          attributes: ['time'], // Solo necesitamos las horas
-        });
+    // Obtener citas reservadas
+    const reservedAppointments = await Appointment.findAll({
+      where: {
+        date,
+        stationId: stationData.id,
+      },
+      attributes: ['time'], // Solo necesitamos las horas
+    });
 
-        // Generar lista de horarios reservados (asegúrate de formatear los horarios)
-            const reservedTimes = reservedAppointments.map((a) => a.time.slice(0, 5)); // Formatear a "HH:mm"
+    // Generar lista de horarios reservados
+    const reservedTimes = reservedAppointments.map((a) => a.time.slice(0, 5)); // Formatear a "HH:mm"
 
-            console.log('Horarios reservados (formateados):', reservedTimes);
+    console.log('Horarios reservados (formateados):', reservedTimes);
 
-            // Generar lista de horarios disponibles
-            const availableTimes = times.map((time) => ({
-              time,
-              reserved: reservedTimes.includes(time),
-            }));
+    // Generar lista de horarios disponibles
+    const availableTimes = times.map((time) => ({
+      time,
+      reserved: reservedTimes.includes(time),
+    }));
 
-            console.log('Horarios generados por la API:', availableTimes);
-
+    console.log('Horarios generados por la API:', availableTimes);
 
     res.status(200).json({ times: availableTimes });
-    
   } catch (error) {
     console.error('Error al obtener horarios disponibles:', error);
     res.status(500).json({ error: 'Error al obtener los horarios disponibles' });
