@@ -10,17 +10,23 @@ const sequelize = new Sequelize(
     dialect: process.env.MYSQL_DIALECT || "mysql",
     dialectModule: require("mysql2"),
     logging: false,
-    timezone: "-06:00", // Configuración para la zona horaria
+    timezone: "-06:00", // Configuración para que Sequelize maneje la zona horaria
     dialectOptions: {
-      timezone: "-06:00", // Compatibilidad adicional con MySQL
-      connectTimeout: 10000, // Opcional: Tiempo de espera para la conexión
+      timezone: "local", // Cambia a "local" para usar la zona horaria del sistema
+      connectTimeout: 10000, // Opcional
     },
   }
 );
 
-// Configurar la zona horaria al conectar
-sequelize.beforeConnect(async (config) => {
-  config.timezone = "-06:00"; // Configurar la zona horaria para la conexión
-});
+// Configurar manualmente la zona horaria para MySQL
+(async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.query("SET time_zone = '-06:00';");
+    console.log("Zona horaria configurada correctamente en MySQL");
+  } catch (error) {
+    console.error("Error configurando la zona horaria:", error);
+  }
+})();
 
 module.exports = sequelize;
