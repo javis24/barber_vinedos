@@ -151,6 +151,7 @@ const resetForm = () => {
                 const localDate = new Date(e.target.value);
                 const utcDate = new Date(localDate.getTime() + localDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                 setSelectedDate(utcDate);
+                
               }}
               className="w-full px-4 py-2 mb-4 bg-transparent border border-gray-300 rounded-lg text-green-500"
               min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]} // Fecha mínima en zona horaria local
