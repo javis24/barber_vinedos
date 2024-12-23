@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import Appointment from '../../../models/Appointment';
 import Station from '../../../models/Station';
+const { zonedTimeToUtc, utcToZonedTime } = require('date-fns-tz');
 
 export default async function handler(req, res) {
   const { date, station } = req.query;
@@ -10,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Buscar estación y datos necesarios en una sola consulta
+    // Buscar estación y datos necesarios
     const stationData = await Station.findOne({
       where: { name: station },
       attributes: [
@@ -29,25 +30,36 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Estación no encontrada' });
     }
 
-    // Ajustar la fecha a la zona horaria correcta
-    const localDate = new Date(new Date(`${date}T00:00:00`).toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
-    const dayOfWeek = localDate.getDay(); // Obtener el día de la semana en la zona horaria correcta
+    // Verificar si todos los horarios están definidos
+    const { weekdayStart, weekdayEnd, saturdayStart, saturdayEnd, sundayStart, sundayEnd, intervalMinutes } = stationData;
+    if (!weekdayStart || !weekdayEnd || !saturdayStart || !saturdayEnd || !sundayStart || !sundayEnd || !intervalMinutes) {
+      return res.status(500).json({ error: 'Datos incompletos de la estación' });
+    }
+
+    const dateObj = new Date(`${date}T00:00:00`);
+    const utcDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
+    const dayOfWeek = utcDate.getUTCDay(); // Obtén el día de la semana en UTC
+
 
     let start, end;
 
     // Determinar horarios según el día
     if (dayOfWeek === 0) {
-      start = stationData.sundayStart;
-      end = stationData.sundayEnd;
+      start = sundayStart;
+      end = sundayEnd;
     } else if (dayOfWeek === 6) {
-      start = stationData.saturdayStart;
-      end = stationData.saturdayEnd;
+      start = saturdayStart;
+      end = saturdayEnd;
     } else {
-      start = stationData.weekdayStart;
-      end = stationData.weekdayEnd;
+      start = weekdayStart;
+      end = weekdayEnd;
     }
 
-    const times = generateTimes(start, end, stationData.intervalMinutes);
+    if (!start || !end) {
+      return res.status(500).json({ error: 'Horarios no definidos para este día' });
+    }
+
+    const times = generateTimes(start, end, intervalMinutes);
 
     // Obtener citas reservadas
     const reservedAppointments = await Appointment.findAll({
@@ -55,7 +67,7 @@ export default async function handler(req, res) {
         date,
         stationId: stationData.id,
       },
-      attributes: ['time'], // Solo necesitamos las horas
+      attributes: ['time'],
     });
 
     // Generar lista de horarios reservados
@@ -94,5 +106,3 @@ function generateTimes(start, end, interval) {
 
   return times;
 }
-
-
