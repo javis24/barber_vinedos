@@ -19,8 +19,8 @@ const sequelize = new Sequelize(
 );
 
 // Configurar la zona horaria al conectar
-sequelize.beforeConnect(async (config) => {
-  config.timezone = "-06:00"; // Configurar la zona horaria para la conexión
+sequelize.beforeConnect((connection) => {
+  connection.query("SET time_zone = '-06:00';");
 });
 
 module.exports = sequelize;
