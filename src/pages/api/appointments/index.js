@@ -1,5 +1,4 @@
 import { Appointment, Station, Client } from "../../../models";
-const moment = require("moment-timezone");
 
 export default async function handler(req, res) {
   switch (req.method) {
@@ -15,12 +14,6 @@ export default async function handler(req, res) {
   }
 }
 
-const convertToTimeZone = (datetime, timeZone = "America/Mexico_City") => {
-  return new Date(
-    new Date(datetime).toLocaleString("en-US", { timeZone })
-  );
-};
-
 // Función para obtener todas las citas
 async function getAppointments(req, res) {
   try {
@@ -29,14 +22,8 @@ async function getAppointments(req, res) {
         { model: Client, as: "Client", attributes: ["name", "phone"] }, // Especifica 'as'
         { model: Station, as: "Station", attributes: ["name"] },       // Especifica 'as'
       ],
-    }); // Ajustar las fechas y horas a la zona horaria deseada
-    const adjustedAppointments = appointments.map((appt) => ({
-      ...appt.toJSON(), // Convertir a JSON para manipular los datos
-      time: convertToTimeZone(appt.time, "America/Mexico_City"),
-      date: convertToTimeZone(appt.date, "America/Mexico_City"),
-    }));
-
-    res.status(200).json({ appointments: adjustedAppointments });
+    });
+    res.status(200).json({ appointments });
   } catch (error) {
     console.error("Error al obtener citas:", error);
     res.status(500).json({ error: "Error al obtener las citas" });
