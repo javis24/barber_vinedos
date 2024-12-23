@@ -159,7 +159,7 @@ const resetForm = () => {
 
           {/* Selección de Estación */}
           <div className="mb-4">
-            <label className="block text-white mb-2">Estación</label>
+            <label className="block text-white mb-2">Estación prueba</label>
             <select
               value={selectedStation}
               onChange={(e) => {
