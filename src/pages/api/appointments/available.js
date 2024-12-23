@@ -95,15 +95,4 @@ function generateTimes(start, end, interval) {
   return times;
 }
 
-const convertToTimeZone = (datetime, timeZone = "America/Mexico_City") => {
-  return new Date(
-    new Date(datetime).toLocaleString("en-US", { timeZone })
-  );
-};
 
-// Ejemplo en tu consulta:
-const appointments = await Appointment.findAll();
-const adjustedAppointments = appointments.map((appt) => ({
-  ...appt,
-  time: convertToTimeZone(appt.time, "America/Mexico_City"),
-}));
