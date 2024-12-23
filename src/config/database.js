@@ -1,5 +1,5 @@
-const { Sequelize } = require('sequelize');
-require('dotenv').config(); 
+const { Sequelize } = require("sequelize");
+require("dotenv").config();
 
 const sequelize = new Sequelize(
   process.env.MYSQL_DATABASE,
@@ -10,22 +10,19 @@ const sequelize = new Sequelize(
     dialect: process.env.MYSQL_DIALECT || "mysql",
     dialectModule: require("mysql2"),
     logging: false,
-    timezone: "-06:00", // Configuración para que Sequelize maneje la zona horaria
+    timezone: "-06:00", // Configuración para la zona horaria
     dialectOptions: {
-      timezone: "local", // Cambia a "local" para usar la zona horaria del sistema
-      connectTimeout: 10000, // Opcional
+      timezone: "local", // Intenta también con 'local' si '-06:00' no funciona
     },
   }
 );
 
-// Configurar manualmente la zona horaria para MySQL
 (async () => {
   try {
     await sequelize.authenticate();
-    await sequelize.query("SET time_zone = '-06:00';");
-    console.log("Zona horaria configurada correctamente en MySQL");
+    console.log("Conexión exitosa con Sequelize.");
   } catch (error) {
-    console.error("Error configurando la zona horaria:", error);
+    console.error("Error conectando a la base de datos:", error);
   }
 })();
 
