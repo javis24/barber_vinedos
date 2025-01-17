@@ -8,7 +8,7 @@ const CreateReservation = () => {
   const [userData, setUserData] = useState({ name: '', phone: '' });
   const [showPopup, setShowPopup] = useState(false);
 
-  const stationOptions = ['Estación-1', 'Jesualdo', 'Gael'];
+  const stationOptions = ['Ale', 'Mario', 'Gael'];
 
   // Obtener horarios disponibles cuando se selecciona estación y fecha
   useEffect(() => {
@@ -47,8 +47,8 @@ const CreateReservation = () => {
   const handleConfirm = async () => {
     // Mapear stationId desde selectedStation
     const stationMapping = {
-      'Estación-1': 1,
-      'Jesualdo': 2,
+      'Ale': 1,
+      'Mario': 2,
       'Gael': 3,
     };
     const stationId = stationMapping[selectedStation];
